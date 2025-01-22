@@ -37,14 +37,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="people"
         options={{
           title: 'People',
           tabBarIcon: ({ color }) => <MaterialIcons size={28} name="people" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="userProfile"
+        name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <MaterialIcons size={28} name="person" color={color} />,

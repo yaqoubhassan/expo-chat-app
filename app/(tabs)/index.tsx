@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Image } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView, Platform } from 'react-native';
@@ -45,9 +45,68 @@ const DUMMY_CHATS = [
     avatar: 'https://i.pravatar.cc/300?img=5',
     isActive: false,
   },
+  {
+    id: '6',
+    name: 'Jenny Wilson',
+    message: 'Hope you are doing well...',
+    timestamp: '3m ago',
+    avatar: 'https://i.pravatar.cc/300?img=1',
+    isActive: true,
+  },
+  {
+    id: '7',
+    name: 'Esther Howard',
+    message: 'Hello Abdullah! I am...',
+    timestamp: '8m ago',
+    avatar: 'https://i.pravatar.cc/300?img=2',
+    isActive: false,
+  },
+  {
+    id: '8',
+    name: 'Ralph Edwards',
+    message: 'Do you have update...',
+    timestamp: '5d ago',
+    avatar: 'https://i.pravatar.cc/300?img=3',
+    isActive: false,
+  },
+  {
+    id: '9',
+    name: 'Jacob Jones',
+    message: "You're welcome :)",
+    timestamp: '5d ago',
+    avatar: 'https://i.pravatar.cc/300?img=4',
+    isActive: true,
+  },
+  {
+    id: '10',
+    name: 'Albert Flores',
+    message: 'Thanks',
+    timestamp: '6d ago',
+    avatar: 'https://i.pravatar.cc/300?img=5',
+    isActive: false,
+  },
 ];
 
 export default function ChatsScreen() {
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [filteredChats, setFilteredChats] = useState(DUMMY_CHATS);
+
+  const handleSearch = (text: string) => {
+    setSearchText(text);
+    if (text.trim() === '') {
+      setFilteredChats(DUMMY_CHATS);
+    } else {
+      setFilteredChats(
+        DUMMY_CHATS.filter(
+          (chat) =>
+            chat.name.toLowerCase().includes(text.toLowerCase()) ||
+            chat.message.toLowerCase().includes(text.toLowerCase())
+        )
+      );
+    }
+  };
+
   const renderChatItem = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.chatItem}>
       <View style={styles.avatarContainer}>
@@ -69,21 +128,37 @@ export default function ChatsScreen() {
       <View style={styles.header}>
         <View style={styles.heading}>
           <Text style={styles.title}>Chats</Text>
-          <TouchableOpacity>
-            <MaterialIcons name="search" size={24} color={Colors.light.text} />
+          <TouchableOpacity onPress={() => setSearchActive(true)}>
+            <MaterialIcons name="search" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
-        <View style={styles.headerButtons}>
+        {searchActive ? (<View style={styles.searchBar}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or email"
+            value={searchText}
+            onChangeText={handleSearch}
+          />
+          <TouchableOpacity
+            onPress={() => {
+              setSearchActive(false);
+              setSearchText(''); // Clear the search field
+              setFilteredChats(DUMMY_CHATS); // Reset the chat list
+            }}
+          >
+            <MaterialIcons name="close" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>) : (<View style={styles.headerButtons}>
           <TouchableOpacity style={styles.filterButton}>
             <Text style={styles.filterText}>Recent Message</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.filterButtonActive}>
             <Text style={styles.filterTextActive}>Active</Text>
           </TouchableOpacity>
-        </View>
+        </View>)}
       </View>
       <FlatList
-        data={DUMMY_CHATS}
+        data={filteredChats}
         keyExtractor={(item) => item.id}
         renderItem={renderChatItem}
         contentContainerStyle={styles.chatList}
@@ -99,6 +174,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.background,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 8,
+    fontSize: 16,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   heading: {
     flexDirection: 'row',
