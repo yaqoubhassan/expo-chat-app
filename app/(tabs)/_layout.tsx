@@ -6,6 +6,7 @@ import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+
 export default function TabLayout() {
 
   return (
@@ -44,7 +45,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="(profile)"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <MaterialIcons size={28} name="person" color={color} />,
