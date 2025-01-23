@@ -88,48 +88,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    // padding: 16,
     backgroundColor: Colors.light.tint,
   },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 30,
+    paddingBottom: 20,
     backgroundColor: '#32CD32',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  filters: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: Colors.light.background,
-  },
-  filterButton: {
-    marginRight: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  filterText: {
-    fontSize: 14,
-    color: '#32CD32',
-    fontWeight: '500',
-  },
-  activeFilter: {
-    backgroundColor: Colors.light.tint,
-  },
-  activeFilterText: {
-    color: '#fff',
   },
   userList: {
     paddingVertical: 10,
@@ -200,24 +168,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 10,
   },
   headerButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-  },
-  filterButtonActive: {
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(34, 139, 34, 0)',
-    borderRadius: 20,
-    borderColor: "#FFF",
-    borderWidth: 1
-
-  },
-  filterTextActive: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
   },
 });
