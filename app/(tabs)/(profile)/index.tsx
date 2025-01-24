@@ -1,11 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import Toast from "react-native-toast-message";
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    const handleLogout = async () => {
+        try {
+            await SecureStore.deleteItemAsync("authToken");
+            setIsLoggedIn(false);
+            // setUser(null);
+            Toast.show({
+                type: "success",
+                text1: "Success",
+                text2: "You have been logged out.",
+            });
+            router.replace("/(auth)/login");
+        } catch (error) {
+            console.error("Logout error:", error);
+            Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: "Failed to log out. Please try again",
+            });
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -59,9 +83,12 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
 
                     {/* Logout Button */}
-                    <TouchableOpacity style={styles.logoutButton} onPress={() => router.replace("/(auth)/login")}>
-                        <Text style={styles.logoutText}>Logout</Text>
-                    </TouchableOpacity>
+                    <View style={styles.logoutButtonContainer}>
+                        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                            <Ionicons name="log-out-outline" size={24} color="#d32f2f" style={{ transform: [{ rotate: '180deg' }] }} />
+                            <Text style={styles.logoutText}>Logout</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -157,16 +184,27 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: '500',
     },
+    logoutButtonContainer: {
+        marginTop: 70,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
     logoutButton: {
-        backgroundColor: '#FF6347',
+        flexDirection: 'row',
+        justifyContent: 'space-evenly',
+        // backgroundColor: '#FF6347',
         paddingVertical: 12,
         borderRadius: 8,
         alignItems: 'center',
         marginTop: 20,
+        width: '40%',
+        borderWidth: 1,
+        borderColor: '#d32f2f'
     },
     logoutText: {
         fontSize: 16,
-        color: '#fff',
+        color: '#d32f2f',
         fontWeight: '500',
     },
 });
