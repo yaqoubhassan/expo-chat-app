@@ -14,8 +14,14 @@ export default function AuthLayout() {
                 },
             }}>
             <Stack.Screen name="login" />
-            {/* <Stack.Screen name="(register)" /> */}
+            <Stack.Screen name="register" />
+            <Stack.Screen name="verifyEmail" options={{
+                title: "Verify Email",
+                headerStyle: { backgroundColor: "#32CD32" },
+                headerTitleAlign: "center",
+                headerTintColor: "#fff",
+                headerShown: true,
+            }} />
         </Stack>
     );
-    // return <Stack screenOptions={{ headerShown: true, title: "Register" }} />;
 }
