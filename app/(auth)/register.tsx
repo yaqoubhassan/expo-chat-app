@@ -1,49 +1,237 @@
-import React from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from "react-native";
+import React, { useState } from "react";
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    ActivityIndicator,
+    ScrollView
+} from "react-native";
 import { useRouter } from "expo-router";
 import CustomSubmitButton from "@/components/CustomSubmitButton";
-import Logo from '@/components/Logo';
+import Logo from "@/components/Logo";
+import Icon from "react-native-vector-icons/Ionicons";
+import { BASE_URL } from "@env";
+import Toast from "react-native-toast-message";
+// import { ScrollView } from "react-native-gesture-handler";
+
+// Define a type for validation errors
+type ValidationErrors = {
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+};
 
 export default function RegisterScreen() {
     const router = useRouter();
 
-    return (
-        <View style={styles.container}>
-            {/* Logo */}
-            <Logo />
-            {/* Sign In Heading */}
-            <Text style={styles.heading}>Sign Up</Text>
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordVisible, setPasswordVisible] = useState(false);
+    const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+    const [loading, setLoading] = useState(false)
 
-            {/* Input Fields */}
+    // State variables for input focus
+    const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
+    const validateFields = (): ValidationErrors => {
+        const errors: ValidationErrors = {};
+        if (!name.trim()) errors.name = "Full name is required.";
+        if (!email.trim()) errors.email = "Email is required.";
+        else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Invalid email format.";
+        if (!password) errors.password = "Password is required.";
+        if (!confirmPassword) errors.confirmPassword = "Confirm password is required.";
+        if (password && confirmPassword && password !== confirmPassword) {
+            errors.confirmPassword = "Passwords do not match.";
+        }
+        return errors;
+    };
+
+    const handleRegister = async () => {
+        const errors = validateFields();
+        if (Object.keys(errors).length > 0) {
+            setValidationErrors(errors);
+            return;
+        }
+
+        setValidationErrors({}); // Clear errors if validation passes
+        setLoading(true);
+
+        try {
+            const response = await fetch(`${BASE_URL}/auth/register`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name,
+                    email,
+                    password,
+                    confirmPassword
+                }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                Toast.show({
+                    type: "success",
+                    text1: "Success",
+                    text2: "Registration successful! Please verify your email.",
+                });
+                router.push({ pathname: "/(auth)/verifyEmail", params: { email }, });
+            } else {
+                Toast.show({
+                    type: "error",
+                    text1: "Error",
+                    text2: data.message || "Registration failed",
+                });
+            }
+        } catch (error) {
+            Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: "An unexpected error occurred",
+            });
+        } finally {
+            setLoading(false); // Hide loading indicator
+        }
+
+    };
+
+    return (
+        <ScrollView contentContainerStyle={styles.container}>
+            {/* Blur screen and show loading indicator */}
+            {loading && (
+                <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size="large" color="#32CD32" />
+                    <Text style={styles.loadingText}>Registering...</Text>
+                </View>
+            )}
+            <Logo />
+            <Text style={styles.heading}>Sign Up</Text>
             <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Full Name"
-                    keyboardType="default"
-                    placeholderTextColor="#888"
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    keyboardType="email-address"
-                    placeholderTextColor="#888"
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    secureTextEntry
-                    placeholderTextColor="#888"
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Confirm Password"
-                    secureTextEntry
-                    placeholderTextColor="#888"
-                />
+                <View style={styles.inputField}>
+                    <TextInput
+                        style={[
+                            styles.input,
+                            focusedInput === "name" && styles.inputFocused,
+                        ]}
+                        placeholder="Full Name"
+                        value={name}
+                        onChangeText={setName}
+                        onFocus={() => setFocusedInput("name")}
+                        onBlur={() => setFocusedInput(null)}
+                        placeholderTextColor="#888"
+                    />
+                    {validationErrors.name && (
+                        <Text style={styles.errorText}>{validationErrors.name}</Text>
+                    )}
+                </View>
+
+                <View style={styles.inputField}>
+                    <TextInput
+                        style={[
+                            styles.input,
+                            focusedInput === "email" && styles.inputFocused,
+                        ]}
+                        placeholder="Email"
+                        value={email}
+                        onChangeText={setEmail}
+                        onFocus={() => setFocusedInput("email")}
+                        onBlur={() => setFocusedInput(null)}
+                        keyboardType="email-address"
+                        placeholderTextColor="#888"
+                    />
+                    {validationErrors.email && (
+                        <Text style={styles.errorText}>{validationErrors.email}</Text>
+                    )}
+                </View>
+
+                <View style={styles.inputField}>
+                    <View
+                        style={[
+                            styles.passwordContainer,
+                            focusedInput === "password" && styles.inputFocused,
+                        ]}
+                    >
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Password"
+                            value={password}
+                            onChangeText={setPassword}
+                            onFocus={() => setFocusedInput("password")}
+                            onBlur={() => setFocusedInput(null)}
+                            secureTextEntry={!passwordVisible}
+                            placeholderTextColor="#888"
+                        />
+                        <TouchableOpacity
+                            onPress={() => setPasswordVisible(!passwordVisible)}
+                            style={styles.eyeButton}
+                        >
+                            <Icon
+                                name={
+                                    passwordVisible
+                                        ? "eye-off-outline"
+                                        : "eye-outline"
+                                }
+                                size={20}
+                                color="#888"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    {validationErrors.password && (
+                        <Text style={styles.errorText}>{validationErrors.password}</Text>
+                    )}
+                </View>
+
+                <View style={styles.inputField}>
+                    <View
+                        style={[
+                            styles.passwordContainer,
+                            focusedInput === "confirmPassword" && styles.inputFocused,
+                        ]}
+                    >
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Confirm Password"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            onFocus={() => setFocusedInput("confirmPassword")}
+                            onBlur={() => setFocusedInput(null)}
+                            secureTextEntry={!confirmPasswordVisible}
+                            placeholderTextColor="#888"
+                        />
+                        <TouchableOpacity
+                            onPress={() =>
+                                setConfirmPasswordVisible(!confirmPasswordVisible)
+                            }
+                            style={styles.eyeButton}
+                        >
+                            <Icon
+                                name={
+                                    confirmPasswordVisible
+                                        ? "eye-off-outline"
+                                        : "eye-outline"
+                                }
+                                size={20}
+                                color="#888"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    {validationErrors.confirmPassword && (
+                        <Text style={styles.errorText}>
+                            {validationErrors.confirmPassword}
+                        </Text>
+                    )}
+                </View>
             </View>
 
-            {/* Sign In Button */}
-            <CustomSubmitButton title="Sign Up" onPress={() => router.push("/(auth)/verifyEmail")} />
+            <CustomSubmitButton title="Sign Up" onPress={handleRegister} />
 
             <View style={styles.signUpContainer}>
                 <Text style={styles.signUpText}>Already have an account? </Text>
@@ -51,7 +239,7 @@ export default function RegisterScreen() {
                     <Text style={styles.signUpLink}>Sign In</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </ScrollView>
     );
 }
 
@@ -62,21 +250,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
-    },
-    logoContainer: {
-        alignItems: "center",
-        marginBottom: 40,
-    },
-    logo: {
-        width: 80,
-        height: 80,
-        resizeMode: "contain",
-    },
-    logoText: {
-        fontSize: 20,
-        fontWeight: "bold",
-        color: "#000",
-        marginTop: 10,
+        paddingBottom: 20
     },
     heading: {
         fontSize: 24,
@@ -88,32 +262,46 @@ const styles = StyleSheet.create({
         width: "100%",
         marginBottom: 20,
     },
+    inputField: {
+        marginBottom: 10,
+    },
     input: {
-        backgroundColor: "#f0f8f0",
+        // backgroundColor: "#f0f8f0",
         borderRadius: 8,
         padding: 15,
-        marginBottom: 15,
+        marginBottom: 5,
+        fontSize: 16,
+        color: "#000",
+        borderWidth: 1,
+        borderColor: "#ccc",
+    },
+    inputFocused: {
+        borderColor: "#32CD32",
+        borderWidth: 2
+    },
+    passwordContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        // backgroundColor: "#f0f8f0",
+        borderRadius: 8,
+        marginBottom: 5,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: "#ccc",
+    },
+    passwordInput: {
+        flex: 1,
+        paddingVertical: 15,
         fontSize: 16,
         color: "#000",
     },
-    signInButton: {
-        backgroundColor: "#32CD32",
-        borderRadius: 8,
-        paddingVertical: 15,
-        paddingHorizontal: 80,
+    eyeButton: {
+        paddingHorizontal: 10,
+    },
+    errorText: {
+        color: "red",
+        fontSize: 12,
         marginBottom: 15,
-    },
-    signInButtonText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "bold",
-        textAlign: "center",
-    },
-    forgotPasswordText: {
-        color: "#888",
-        fontSize: 14,
-        textDecorationLine: "underline",
-        marginBottom: 20,
     },
     signUpContainer: {
         flexDirection: "row",
@@ -128,5 +316,17 @@ const styles = StyleSheet.create({
         color: "#32CD32",
         fontWeight: "bold",
         textDecorationLine: "underline",
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1,
+    },
+    loadingText: {
+        marginTop: 10,
+        color: "#fff",
+        fontSize: 16,
     },
 });
