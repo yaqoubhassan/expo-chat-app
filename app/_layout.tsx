@@ -1,10 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { View, Text, StyleSheet } from "react-native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
 import "react-native-reanimated";
 
 import Toast, { ToastConfig, ToastConfigParams } from "react-native-toast-message";
@@ -13,29 +14,54 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-// Define types for the Toast properties
 interface ToastProps {
-  text1?: string; // Making text1 optional
-  text2?: string; // Making text2 optional
+  text1?: string;
+  text2?: string;
 }
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    const checkAuth = async () => {
+      try {
+        const userToken = await SecureStore.getItemAsync("authToken");
+        console.log("Auth Token:", userToken); // Debugging log
+        setIsAuthenticated(!!userToken); // Set authentication status
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false); // Assume unauthenticated on error
+      }
+    };
 
-  if (!loaded) {
-    return null;
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleNavigation = async () => {
+      if (loaded && isAuthenticated !== null) {
+        if (!isAuthenticated) {
+          console.log("Redirecting to login...");
+          router.replace("/(auth)/login");
+        } else {
+          console.log("User authenticated, proceeding...");
+        }
+        await SplashScreen.hideAsync(); // Always hide splash screen
+      }
+    };
+
+    handleNavigation();
+  }, [loaded, isAuthenticated]);
+
+  if (!loaded || isAuthenticated === null) {
+    return null; // Wait until fonts and authentication status are resolved
   }
 
-  // Custom toast configuration with proper types
   const toastConfig: ToastConfig = {
     success: ({ text1, text2 }: ToastConfigParams<ToastProps>) => (
       <View style={[styles.toastContainer, styles.successToast]}>
