@@ -1,17 +1,17 @@
 import React from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { useRouter } from "expo-router";
+import CustomSubmitButton from "@/components/CustomSubmitButton";
+import Logo from '@/components/Logo';
 
 export default function LoginScreen() {
     const router = useRouter();
 
     return (
         <View style={styles.container}>
+
             {/* Logo */}
-            <View style={styles.logoContainer}>
-                {/* <Image source={require("./assets/logo.png")} style={styles.logo} /> */}
-                <Text style={styles.logoText}>Freedom</Text>
-            </View>
+            <Logo />
 
             {/* Sign In Heading */}
             <Text style={styles.heading}>Sign In</Text>
@@ -33,9 +33,7 @@ export default function LoginScreen() {
             </View>
 
             {/* Sign In Button */}
-            <TouchableOpacity style={styles.signInButton} onPress={() => router.push("/")}>
-                <Text style={styles.signInButtonText}>Sign in</Text>
-            </TouchableOpacity>
+            <CustomSubmitButton title="Sign In" onPress={() => router.push("/")} />
 
             {/* Forgot Password and Sign Up Links */}
             <TouchableOpacity>
@@ -43,7 +41,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
             <View style={styles.signUpContainer}>
                 <Text style={styles.signUpText}>Don’t have an account? </Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
                     <Text style={styles.signUpLink}>Sign Up</Text>
                 </TouchableOpacity>
             </View>
