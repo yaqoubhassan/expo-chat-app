@@ -1,0 +1,132 @@
+import React from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { useRouter } from "expo-router";
+import CustomSubmitButton from "@/components/CustomSubmitButton";
+import Logo from '@/components/Logo';
+
+export default function RegisterScreen() {
+    const router = useRouter();
+
+    return (
+        <View style={styles.container}>
+            {/* Logo */}
+            <Logo />
+            {/* Sign In Heading */}
+            <Text style={styles.heading}>Sign Up</Text>
+
+            {/* Input Fields */}
+            <View style={styles.inputContainer}>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    keyboardType="default"
+                    placeholderTextColor="#888"
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    keyboardType="email-address"
+                    placeholderTextColor="#888"
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    secureTextEntry
+                    placeholderTextColor="#888"
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    secureTextEntry
+                    placeholderTextColor="#888"
+                />
+            </View>
+
+            {/* Sign In Button */}
+            <CustomSubmitButton title="Sign Up" onPress={() => router.push("/(auth)/verifyEmail")} />
+
+            <View style={styles.signUpContainer}>
+                <Text style={styles.signUpText}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Text style={styles.signUpLink}>Sign In</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#fff",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+    },
+    logoContainer: {
+        alignItems: "center",
+        marginBottom: 40,
+    },
+    logo: {
+        width: 80,
+        height: 80,
+        resizeMode: "contain",
+    },
+    logoText: {
+        fontSize: 20,
+        fontWeight: "bold",
+        color: "#000",
+        marginTop: 10,
+    },
+    heading: {
+        fontSize: 24,
+        fontWeight: "bold",
+        color: "#000",
+        marginBottom: 20,
+    },
+    inputContainer: {
+        width: "100%",
+        marginBottom: 20,
+    },
+    input: {
+        backgroundColor: "#f0f8f0",
+        borderRadius: 8,
+        padding: 15,
+        marginBottom: 15,
+        fontSize: 16,
+        color: "#000",
+    },
+    signInButton: {
+        backgroundColor: "#32CD32",
+        borderRadius: 8,
+        paddingVertical: 15,
+        paddingHorizontal: 80,
+        marginBottom: 15,
+    },
+    signInButtonText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "bold",
+        textAlign: "center",
+    },
+    forgotPasswordText: {
+        color: "#888",
+        fontSize: 14,
+        textDecorationLine: "underline",
+        marginBottom: 20,
+    },
+    signUpContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    signUpText: {
+        fontSize: 14,
+        color: "#888",
+    },
+    signUpLink: {
+        fontSize: 14,
+        color: "#32CD32",
+        fontWeight: "bold",
+        textDecorationLine: "underline",
+    },
+});
