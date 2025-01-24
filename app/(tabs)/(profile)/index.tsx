@@ -9,14 +9,14 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>Profile</Text>
-                    {/* <TouchableOpacity>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.title}>Profile</Text>
+                {/* <TouchableOpacity>
                         <MaterialIcons name="settings" size={24} color="#fff" />
-                    </TouchableOpacity> */}
-                </View>
+                        </TouchableOpacity> */}
+            </View>
+            <ScrollView contentContainerStyle={styles.content}>
 
                 <View style={styles.screenBody}>
                     {/* Profile Section */}
