@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     StyleSheet,
     ActivityIndicator,
@@ -11,10 +10,10 @@ import {
 import { useRouter } from "expo-router";
 import CustomSubmitButton from "@/components/CustomSubmitButton";
 import Logo from "@/components/Logo";
-import Icon from "react-native-vector-icons/Ionicons";
 import { BASE_URL } from "@env";
 import Toast from "react-native-toast-message";
-// import { ScrollView } from "react-native-gesture-handler";
+import CustomTextInput from "@/components/CustomTextInput";
+import CustomPasswordInput from "@/components/CustomPasswordInput";
 
 // Define a type for validation errors
 type ValidationErrors = {
@@ -31,13 +30,8 @@ export default function RegisterScreen() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [passwordVisible, setPasswordVisible] = useState(false);
-    const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [loading, setLoading] = useState(false)
-
-    // State variables for input focus
-    const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
     const validateFields = (): ValidationErrors => {
         const errors: ValidationErrors = {};
@@ -115,120 +109,35 @@ export default function RegisterScreen() {
             <Logo />
             <Text style={styles.heading}>Sign Up</Text>
             <View style={styles.inputContainer}>
-                <View style={styles.inputField}>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            focusedInput === "name" && styles.inputFocused,
-                        ]}
-                        placeholder="Full Name"
-                        value={name}
-                        onChangeText={setName}
-                        onFocus={() => setFocusedInput("name")}
-                        onBlur={() => setFocusedInput(null)}
-                        placeholderTextColor="#888"
-                    />
-                    {validationErrors.name && (
-                        <Text style={styles.errorText}>{validationErrors.name}</Text>
-                    )}
-                </View>
+                <CustomTextInput
+                    value={name}
+                    placeholder="Full Name"
+                    onChangeText={setName}
+                    error={validationErrors.name}
+                />
 
-                <View style={styles.inputField}>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            focusedInput === "email" && styles.inputFocused,
-                        ]}
-                        placeholder="Email"
-                        value={email}
-                        onChangeText={setEmail}
-                        onFocus={() => setFocusedInput("email")}
-                        onBlur={() => setFocusedInput(null)}
-                        keyboardType="email-address"
-                        placeholderTextColor="#888"
-                    />
-                    {validationErrors.email && (
-                        <Text style={styles.errorText}>{validationErrors.email}</Text>
-                    )}
-                </View>
+                <CustomTextInput
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    error={validationErrors.email}
+                />
 
-                <View style={styles.inputField}>
-                    <View
-                        style={[
-                            styles.passwordContainer,
-                            focusedInput === "password" && styles.inputFocused,
-                        ]}
-                    >
-                        <TextInput
-                            style={styles.passwordInput}
-                            placeholder="Password"
-                            value={password}
-                            onChangeText={setPassword}
-                            onFocus={() => setFocusedInput("password")}
-                            onBlur={() => setFocusedInput(null)}
-                            secureTextEntry={!passwordVisible}
-                            placeholderTextColor="#888"
-                        />
-                        <TouchableOpacity
-                            onPress={() => setPasswordVisible(!passwordVisible)}
-                            style={styles.eyeButton}
-                        >
-                            <Icon
-                                name={
-                                    passwordVisible
-                                        ? "eye-off-outline"
-                                        : "eye-outline"
-                                }
-                                size={20}
-                                color="#888"
-                            />
-                        </TouchableOpacity>
-                    </View>
-                    {validationErrors.password && (
-                        <Text style={styles.errorText}>{validationErrors.password}</Text>
-                    )}
-                </View>
+                <CustomPasswordInput
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    error={validationErrors.password}
+                />
 
-                <View style={styles.inputField}>
-                    <View
-                        style={[
-                            styles.passwordContainer,
-                            focusedInput === "confirmPassword" && styles.inputFocused,
-                        ]}
-                    >
-                        <TextInput
-                            style={styles.passwordInput}
-                            placeholder="Confirm Password"
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            onFocus={() => setFocusedInput("confirmPassword")}
-                            onBlur={() => setFocusedInput(null)}
-                            secureTextEntry={!confirmPasswordVisible}
-                            placeholderTextColor="#888"
-                        />
-                        <TouchableOpacity
-                            onPress={() =>
-                                setConfirmPasswordVisible(!confirmPasswordVisible)
-                            }
-                            style={styles.eyeButton}
-                        >
-                            <Icon
-                                name={
-                                    confirmPasswordVisible
-                                        ? "eye-off-outline"
-                                        : "eye-outline"
-                                }
-                                size={20}
-                                color="#888"
-                            />
-                        </TouchableOpacity>
-                    </View>
-                    {validationErrors.confirmPassword && (
-                        <Text style={styles.errorText}>
-                            {validationErrors.confirmPassword}
-                        </Text>
-                    )}
-                </View>
+                <CustomPasswordInput
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    error={validationErrors.confirmPassword}
+                />
+
             </View>
 
             <CustomSubmitButton title="Sign Up" onPress={handleRegister} />
