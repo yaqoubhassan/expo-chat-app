@@ -1,14 +1,102 @@
-import React from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
+import Toast from "react-native-toast-message";
 import CustomSubmitButton from "@/components/CustomSubmitButton";
-import Logo from '@/components/Logo';
+import Logo from "@/components/Logo";
+import CustomTextInput from "@/components/CustomTextInput";
+import CustomPasswordInput from "@/components/CustomPasswordInput";
+import { BASE_URL } from "@env";
+import * as SecureStore from "expo-secure-store";
+
+// Define a type for validation errors
+type ValidationErrors = {
+    email?: string;
+    password?: string;
+};
 
 export default function LoginScreen() {
     const router = useRouter();
 
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+    const [loading, setLoading] = useState(false);
+
+    const validateFields = (): ValidationErrors => {
+        const errors: ValidationErrors = {};
+        if (!email.trim()) errors.email = "Email is required.";
+        else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Invalid email format.";
+        if (!password.trim()) errors.password = "Password is required.";
+        return errors;
+    };
+
+    const saveToken = async (token: string) => {
+        try {
+            await SecureStore.setItemAsync("authToken", token);
+            console.log("Token saved successfully");
+        } catch (error) {
+            console.error("Failed to save token:", error);
+        }
+    };
+
+    const handleLogin = async () => {
+        const errors = validateFields();
+        if (Object.keys(errors).length > 0) {
+            setValidationErrors(errors);
+            return;
+        }
+
+        setValidationErrors({}); // Clear errors if validation passes
+        setLoading(true);
+
+        try {
+            const response = await fetch(`${BASE_URL}/auth/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                if (data.data.token) {
+                    await saveToken(data.data.token);
+                }
+                Toast.show({
+                    type: "success",
+                    text1: "Success",
+                    text2: "Login successful!",
+                });
+                router.push("/"); // Navigate to the home screen
+            } else {
+                Toast.show({
+                    type: "error",
+                    text1: "Error",
+                    text2: data.message || "Login failed.",
+                });
+            }
+        } catch (error) {
+            Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: "An unexpected error occurred.",
+            });
+        } finally {
+            setLoading(false); // Hide loading indicator
+        }
+    };
+
     return (
         <View style={styles.container}>
+            {/* Loading Overlay */}
+            {loading && (
+                <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size="large" color="#32CD32" />
+                    <Text style={styles.loadingText}>Logging in...</Text>
+                </View>
+            )}
 
             {/* Logo */}
             <Logo />
@@ -18,22 +106,23 @@ export default function LoginScreen() {
 
             {/* Input Fields */}
             <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Phone"
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#888"
+                <CustomTextInput
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    error={validationErrors.email}
                 />
-                <TextInput
-                    style={styles.input}
+                <CustomPasswordInput
                     placeholder="Password"
-                    secureTextEntry
-                    placeholderTextColor="#888"
+                    value={password}
+                    onChangeText={setPassword}
+                    error={validationErrors.password}
                 />
             </View>
 
             {/* Sign In Button */}
-            <CustomSubmitButton title="Sign In" onPress={() => router.push("/")} />
+            <CustomSubmitButton title="Sign In" onPress={handleLogin} />
 
             {/* Forgot Password and Sign Up Links */}
             <TouchableOpacity>
@@ -57,21 +146,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         padding: 20,
     },
-    logoContainer: {
-        alignItems: "center",
-        marginBottom: 40,
-    },
-    logo: {
-        width: 80,
-        height: 80,
-        resizeMode: "contain",
-    },
-    logoText: {
-        fontSize: 20,
-        fontWeight: "bold",
-        color: "#000",
-        marginTop: 10,
-    },
     heading: {
         fontSize: 24,
         fontWeight: "bold",
@@ -81,27 +155,6 @@ const styles = StyleSheet.create({
     inputContainer: {
         width: "100%",
         marginBottom: 20,
-    },
-    input: {
-        backgroundColor: "#f0f8f0",
-        borderRadius: 8,
-        padding: 15,
-        marginBottom: 15,
-        fontSize: 16,
-        color: "#000",
-    },
-    signInButton: {
-        backgroundColor: "#32CD32",
-        borderRadius: 8,
-        paddingVertical: 15,
-        paddingHorizontal: 80,
-        marginBottom: 15,
-    },
-    signInButtonText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "bold",
-        textAlign: "center",
     },
     forgotPasswordText: {
         color: "#888",
@@ -122,5 +175,17 @@ const styles = StyleSheet.create({
         color: "#32CD32",
         fontWeight: "bold",
         textDecorationLine: "underline",
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1,
+    },
+    loadingText: {
+        marginTop: 10,
+        color: "#fff",
+        fontSize: 16,
     },
 });
