@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import CustomSubmitButton from "@/components/CustomSubmitButton";
@@ -89,7 +89,7 @@ export default function LoginScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.container}>
             {/* Loading Overlay */}
             {loading && (
                 <View style={styles.loadingOverlay}>
@@ -134,7 +134,7 @@ export default function LoginScreen() {
                     <Text style={styles.signUpLink}>Sign Up</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </ScrollView>
     );
 }
 
@@ -145,6 +145,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
+        paddingBottom: 40
     },
     heading: {
         fontSize: 24,

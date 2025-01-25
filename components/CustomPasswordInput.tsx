@@ -64,6 +64,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#888",
         marginBottom: 5,
+        fontWeight: "bold"
     },
     passwordContainer: {
         flexDirection: "row",

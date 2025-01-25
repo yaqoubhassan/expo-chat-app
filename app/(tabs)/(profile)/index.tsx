@@ -1,20 +1,36 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
+import React, { useEffect } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    Image,
+    TouchableOpacity,
+    SafeAreaView,
+    ScrollView,
+    ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-toast-message";
+import { useProfile } from "@/context/ProfileContext"; // Import the ProfileContext
+import * as SecureStore from "expo-secure-store";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const { profile, fetchProfile } = useProfile(); // Access profile and fetchProfile from context
+
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchProfile();
+        }, [])
+    );
 
     const handleLogout = async () => {
         try {
+            // Clear auth token and redirect to login
             await SecureStore.deleteItemAsync("authToken");
-            setIsLoggedIn(false);
-            // setUser(null);
             Toast.show({
                 type: "success",
                 text1: "Success",
@@ -26,66 +42,77 @@ export default function ProfileScreen() {
             Toast.show({
                 type: "error",
                 text1: "Error",
-                text2: "Failed to log out. Please try again",
+                text2: "Failed to log out. Please try again.",
             });
         }
     };
+
+    if (!profile) {
+        // Show a loading indicator if the profile hasn't loaded yet
+        return (
+            <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color="#32CD32" />
+                <Text style={styles.loadingText}>Loading profile...</Text>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.title}>Profile</Text>
-                {/* <TouchableOpacity>
-                        <MaterialIcons name="settings" size={24} color="#fff" />
-                        </TouchableOpacity> */}
             </View>
-            <ScrollView contentContainerStyle={styles.content}>
 
+            <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.screenBody}>
                     {/* Profile Section */}
                     <View style={styles.profileSection}>
                         <View style={styles.avatarWrapper}>
                             <Image
-                                source={{ uri: 'https://i.pravatar.cc/300' }}
+                                source={{
+                                    uri: profile.avatar ? profile.avatar : "https://i.pravatar.cc/300",
+                                }} // Use profile avatar or fallback
                                 style={styles.avatar}
                             />
-                            <TouchableOpacity style={styles.addButton}>
+                            {/* <TouchableOpacity style={styles.addButton}>
                                 <MaterialIcons name="add" size={18} color="#fff" />
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
                         </View>
-                        <Text style={styles.name}>Annette Black</Text>
+                        <Text style={styles.name}>{profile.name || "Anonymous User"}</Text>
                     </View>
 
                     {/* User Info */}
                     <View style={styles.infoSection}>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>User ID</Text>
-                            <Text style={styles.infoValue}>@annette.me</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Location</Text>
-                            <Text style={styles.infoValue}>New York, NYC</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Phone</Text>
-                            <Text style={styles.infoValue}>(239) 555-0108</Text>
-                        </View>
+
                         <View style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Email Address</Text>
-                            <Text style={styles.infoValue}>demo@mail.com</Text>
+                            <Text style={styles.infoValue}>
+                                {profile.email || "Not provided"}
+                            </Text>
                         </View>
                     </View>
 
                     {/* Edit Profile Button */}
-                    <TouchableOpacity style={styles.editProfileButton} onPress={() => router.push("/(tabs)/(editProfile)/[userId]")}>
+                    <TouchableOpacity
+                        style={styles.editProfileButton}
+                        onPress={() => router.push("/(tabs)/(editProfile)/[userId]")}
+                    >
                         <Text style={styles.editProfileText}>Edit profile</Text>
                     </TouchableOpacity>
 
                     {/* Logout Button */}
                     <View style={styles.logoutButtonContainer}>
-                        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                            <Ionicons name="log-out-outline" size={24} color="#d32f2f" style={{ transform: [{ rotate: '180deg' }] }} />
+                        <TouchableOpacity
+                            style={styles.logoutButton}
+                            onPress={handleLogout}
+                        >
+                            <Ionicons
+                                name="log-out-outline"
+                                size={24}
+                                color="#d32f2f"
+                                style={{ transform: [{ rotate: "180deg" }] }}
+                            />
                             <Text style={styles.logoutText}>Logout</Text>
                         </TouchableOpacity>
                     </View>
@@ -100,6 +127,15 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.light.background,
     },
+    loadingContainer: {
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: "#666",
+    },
     content: {
         paddingBottom: 20,
     },
@@ -107,10 +143,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#32CD32',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        backgroundColor: "#32CD32",
         paddingHorizontal: 16,
         paddingTop: 30,
         paddingBottom: 20,
@@ -119,15 +155,15 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 24,
-        fontWeight: 'bold',
-        color: '#fff',
+        fontWeight: "bold",
+        color: "#fff",
     },
     profileSection: {
-        alignItems: 'center',
+        alignItems: "center",
         marginVertical: 20,
     },
     avatarWrapper: {
-        position: 'relative',
+        position: "relative",
     },
     avatar: {
         width: 100,
@@ -135,76 +171,75 @@ const styles = StyleSheet.create({
         borderRadius: 50,
     },
     addButton: {
-        position: 'absolute',
+        position: "absolute",
         bottom: 0,
         right: 0,
-        backgroundColor: '#32CD32',
+        backgroundColor: "#32CD32",
         width: 24,
         height: 24,
         borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         borderWidth: 2,
-        borderColor: '#fff',
+        borderColor: "#fff",
     },
     name: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         marginTop: 10,
-        color: '#000',
+        color: "#000",
     },
     infoSection: {
         marginVertical: 20,
     },
     infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        justifyContent: "space-between",
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomColor: "#EEE",
     },
     infoLabel: {
         fontSize: 16,
-        color: '#666',
+        color: "#666",
     },
     infoValue: {
         fontSize: 16,
-        fontWeight: '500',
-        color: '#000',
+        fontWeight: "500",
+        color: "#000",
     },
     editProfileButton: {
-        backgroundColor: '#32CD32',
+        backgroundColor: "#32CD32",
         paddingVertical: 12,
         borderRadius: 8,
-        alignItems: 'center',
+        alignItems: "center",
         marginTop: 20,
     },
     editProfileText: {
         fontSize: 16,
-        color: '#fff',
-        fontWeight: '500',
+        color: "#fff",
+        fontWeight: "500",
     },
     logoutButtonContainer: {
         marginTop: 70,
         paddingHorizontal: 16,
-        flexDirection: 'row',
-        justifyContent: 'center',
+        flexDirection: "row",
+        justifyContent: "center",
     },
     logoutButton: {
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        // backgroundColor: '#FF6347',
+        flexDirection: "row",
+        justifyContent: "space-evenly",
         paddingVertical: 12,
         borderRadius: 8,
-        alignItems: 'center',
+        alignItems: "center",
         marginTop: 20,
-        width: '40%',
+        width: "40%",
         borderWidth: 1,
-        borderColor: '#d32f2f'
+        borderColor: "#d32f2f",
     },
     logoutText: {
         fontSize: 16,
-        color: '#d32f2f',
-        fontWeight: '500',
+        color: "#d32f2f",
+        fontWeight: "500",
     },
 });

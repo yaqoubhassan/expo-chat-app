@@ -2,6 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "jsx": "react-native", // Enables JSX support for React Native
+    "allowJs": true,       // Allows JavaScript files if present
+    "skipLibCheck": true,  // Skips type checking on libraries
     "paths": {
       "@/*": [
         "./*"
