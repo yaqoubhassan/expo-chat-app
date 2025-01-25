@@ -1,63 +1,58 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Colors } from '@/constants/Colors';
-import { SafeAreaView, Platform } from 'react-native';
-
-const DUMMY_USERS = [
-  {
-    id: '1',
-    name: 'Jenny Wilson',
-    email: 'wilson@gmail.com',
-    avatar: 'https://i.pravatar.cc/300?img=1',
-    isActive: true,
-  },
-  {
-    id: '2',
-    name: 'Esther Howard',
-    email: 'esther@gmail.com',
-    avatar: 'https://i.pravatar.cc/300?img=2',
-    isActive: false,
-  },
-  {
-    id: '3',
-    name: 'Ralph Edwards',
-    email: 'ralph@gmail.com',
-    avatar: 'https://i.pravatar.cc/300?img=3',
-    isActive: false,
-  },
-  {
-    id: '4',
-    name: 'Jacob Jones',
-    email: 'jacob@gmail.com',
-    avatar: 'https://i.pravatar.cc/300?img=4',
-    isActive: true,
-  },
-  {
-    id: '5',
-    name: 'Albert Flores',
-    email: 'albert@gmail.com',
-    avatar: 'https://i.pravatar.cc/300?img=5',
-    isActive: false,
-  }
-];
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Text,
+  TouchableOpacity
+} from "react-native";
+import { SafeAreaView } from "react-native";
+import { fetchUsers } from "@/services/fetchUsers"; // Adjust the path
+import UserItem from "@/components/UserItem";
+import { User } from "@/types/User"; // Adjust the path
+import { Colors } from "@/constants/Colors";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 export default function PeopleScreen() {
-  const renderUserItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.userItem}>
-      <View style={styles.avatarContainer}>
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        {item.isActive && <View style={styles.activeIndicator} />}
-      </View>
-      <View style={styles.userDetails}>
-        <Text style={styles.userName}>{item.name}</Text>
-        <Text style={styles.userEmail} numberOfLines={1}>
-          {item.email}
-        </Text>
-      </View>
-      <Text style={styles.userTimestamp}>{item.timestamp}</Text>
-    </TouchableOpacity>
-  );
+  const [users, setUsers] = useState<User[]>([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const getUsers = async (pageNumber = 1, refreshing = false) => {
+    if (!refreshing) setIsLoading(true);
+
+    try {
+      const data = await fetchUsers(pageNumber, 10);
+      const newUsers = data.data as User[];
+
+      setUsers((prev) => (refreshing ? newUsers : [...prev, ...newUsers]));
+      setHasMore(pageNumber < data.meta.totalPages);
+    } catch (error) {
+      Alert.alert("Error", "Unable to fetch users. Please try again later.");
+    } finally {
+      if (!refreshing) setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const loadMoreUsers = () => {
+    if (isLoading || !hasMore) return;
+    setPage((prev) => prev + 1);
+  };
+
+  const refreshUsers = () => {
+    setIsRefreshing(true);
+    setPage(1);
+    getUsers(1, true);
+  };
+
+  useEffect(() => {
+    getUsers(page);
+  }, [page]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,10 +65,19 @@ export default function PeopleScreen() {
         </View>
       </View>
       <FlatList
-        data={DUMMY_USERS}
+        data={users}
         keyExtractor={(item) => item.id}
-        renderItem={renderUserItem}
+        renderItem={({ item }) => <UserItem item={item} />}
+        onEndReached={loadMoreUsers}
+        onEndReachedThreshold={0.5}
+        refreshing={isRefreshing}
+        onRefresh={refreshUsers}
         contentContainerStyle={styles.userList}
+        ListFooterComponent={
+          isLoading && !isRefreshing ? (
+            <ActivityIndicator size="small" color={Colors.light.tint} />
+          ) : null
+        }
       />
     </SafeAreaView>
   );
@@ -84,93 +88,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.background,
   },
-  heading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    // padding: 16,
-    backgroundColor: Colors.light.tint,
-  },
   header: {
     paddingHorizontal: 16,
     paddingTop: 30,
     paddingBottom: 20,
-    backgroundColor: '#32CD32',
+    backgroundColor: Colors.light.tint,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+  },
+  heading: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   userList: {
     paddingVertical: 10,
   },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  avatarContainer: {
-    marginRight: 12,
-    position: 'relative',
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 10,
-  },
-  activeIndicator: {
-    width: 10,
-    height: 10,
-    backgroundColor: '#32CD32',
-    borderRadius: 5,
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  userDetails: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#888888',
-  },
-  userTimestamp: {
-    fontSize: 12,
-    color: Colors.light.subtext,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 120 : 40,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 50,
-  },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
 });
