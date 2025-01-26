@@ -117,7 +117,8 @@ const styles = StyleSheet.create({
     backgroundColor: "red",
   },
   infoToast: {
-    backgroundColor: "yellow"
+    backgroundColor: "#D3D3D3",
+    color: "#32CD32"
   },
   toastTitle: {
     fontSize: 16,

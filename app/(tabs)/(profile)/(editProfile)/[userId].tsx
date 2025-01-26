@@ -286,8 +286,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 30,
         paddingBottom: 20,
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
     },
     title: { fontSize: 24, fontWeight: "bold", color: "#fff" },
     profileSection: { alignItems: "center", marginVertical: 20 },

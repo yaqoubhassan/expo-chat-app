@@ -60,6 +60,7 @@ export default function LoginScreen() {
             });
 
             const data = await response.json();
+
             if (response.ok) {
                 if (data.data.token) {
                     await saveToken(data.data.token);
@@ -71,11 +72,24 @@ export default function LoginScreen() {
                 });
                 router.push("/"); // Navigate to the home screen
             } else {
-                Toast.show({
-                    type: "error",
-                    text1: "Error",
-                    text2: data.message || "Login failed.",
-                });
+                if (data.message.includes("Please verify your email")) {
+                    // If the user is not verified, redirect to the email verification screen
+                    Toast.show({
+                        type: "info",
+                        text1: "Email Verification",
+                        text2: "Please verify your email. A verification code has been sent.",
+                    });
+                    router.push({
+                        pathname: "/(auth)/verifyEmail", // Adjust the route as needed
+                        params: { email: email },
+                    });
+                } else {
+                    Toast.show({
+                        type: "error",
+                        text1: "Error",
+                        text2: data.message || "Login failed.",
+                    });
+                }
             }
         } catch (error) {
             Toast.show({
@@ -87,6 +101,7 @@ export default function LoginScreen() {
             setLoading(false); // Hide loading indicator
         }
     };
+
 
     return (
         <ScrollView contentContainerStyle={styles.container}>

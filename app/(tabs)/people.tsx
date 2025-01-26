@@ -66,7 +66,7 @@ export default function PeopleScreen() {
       </View>
       <FlatList
         data={users}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item.id || `user-${index}`}
         renderItem={({ item }) => <UserItem item={item} />}
         onEndReached={loadMoreUsers}
         onEndReachedThreshold={0.5}
@@ -93,8 +93,6 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 20,
     backgroundColor: Colors.light.tint,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
   },
   heading: {
     flexDirection: "row",
@@ -108,5 +106,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
+  },
+  centerEmptyList: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: Colors.light.tint,
+    textAlign: "center",
   },
 });

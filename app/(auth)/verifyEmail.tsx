@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Modal,
+    ScrollView
 } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import CustomSubmitButton from "@/components/CustomSubmitButton";
@@ -182,45 +183,47 @@ export default function VerifyEmailScreen() {
                 style={styles.container}
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
-                <Logo />
-                <Text style={styles.heading}>Verification</Text>
-                <Text style={styles.subheading}>A verification code has been sent to</Text>
-                <Text style={styles.email}>{(email as string).toLowerCase()}</Text>
+                <ScrollView contentContainerStyle={styles.container}>
+                    <Logo />
+                    <Text style={styles.heading}>Verification</Text>
+                    <Text style={styles.subheading}>A verification code has been sent to</Text>
+                    <Text style={styles.email}>{(email as string).toLowerCase()}</Text>
 
-                <View style={styles.otpContainer}>
-                    {otp.map((digit, index) => (
-                        <TextInput
-                            key={index}
-                            style={styles.otpInput}
-                            value={digit}
-                            onChangeText={(text) => handleChange(text, index)}
-                            onKeyPress={(e) => handleKeyPress(e, index)}
-                            keyboardType="number-pad"
-                            maxLength={1}
-                            ref={(input) => (inputs[`input-${index}`] = input)}
-                        />
-                    ))}
-                </View>
+                    <View style={styles.otpContainer}>
+                        {otp.map((digit, index) => (
+                            <TextInput
+                                key={index}
+                                style={styles.otpInput}
+                                value={digit}
+                                onChangeText={(text) => handleChange(text, index)}
+                                onKeyPress={(e) => handleKeyPress(e, index)}
+                                keyboardType="number-pad"
+                                maxLength={1}
+                                ref={(input) => (inputs[`input-${index}`] = input)}
+                            />
+                        ))}
+                    </View>
 
-                <CustomSubmitButton title="Next" onPress={verifyCode} />
+                    <CustomSubmitButton title="Next" onPress={verifyCode} />
 
-                <Text style={styles.timerText}>
-                    {timer > 0 ? `Resend code in ${formatTime(timer)}` : "You can now resend the code"}
-                </Text>
-
-                <TouchableOpacity onPress={resendCode} disabled={resendDisabled}>
-                    <Text style={[styles.resendText, resendDisabled && styles.disabledText]}>
-                        Resend Verification Code
+                    <Text style={styles.timerText}>
+                        {timer > 0 ? `Resend code in ${formatTime(timer)}` : "You can now resend the code"}
                     </Text>
-                </TouchableOpacity>
 
-                <ConfettiCannon
-                    count={150}
-                    origin={{ x: 0, y: -15 }}
-                    autoStart={false}
-                    fadeOut={true}
-                    ref={confettiRef}
-                />
+                    <TouchableOpacity onPress={resendCode} disabled={resendDisabled}>
+                        <Text style={[styles.resendText, resendDisabled && styles.disabledText]}>
+                            Resend Verification Code
+                        </Text>
+                    </TouchableOpacity>
+
+                    <ConfettiCannon
+                        count={150}
+                        origin={{ x: 0, y: -15 }}
+                        autoStart={false}
+                        fadeOut={true}
+                        ref={confettiRef}
+                    />
+                </ScrollView>
             </KeyboardAvoidingView>
 
             {isLoading && (
