@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     View,
     Text,
@@ -9,6 +9,7 @@ import {
     StyleSheet,
     SafeAreaView,
     ActivityIndicator,
+    KeyboardAvoidingView,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Colors } from "@/constants/Colors";
@@ -29,7 +30,12 @@ type Message = {
     audioDuration?: string; // For audio messages
 };
 
+interface TypingEvent {
+    senderId: string; // Adjust type based on your actual data
+}
+
 export default function MessageScreen() {
+    const [isTyping, setIsTyping] = useState(false);
     const router = useRouter();
     const { profile } = useProfile();
     const { chatId, name, avatar, receiverId, email } = useLocalSearchParams();
@@ -38,6 +44,72 @@ export default function MessageScreen() {
     const [inputHeight, setInputHeight] = useState(40);
     const [input, setInput] = useState("");
     const [socket, setSocket] = useState<any>(null);
+    const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+    const flatListRef = useRef<FlatList>(null); // Ref for FlatList
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+    let typingTimeout: NodeJS.Timeout | undefined;
+
+    const scrollToBottom = () => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+        setShowScrollToBottom(false); // Hide the button after scrolling
+    };
+
+    useFocusEffect(
+
+        React.useCallback(() => {
+            if (messages.length) {
+                scrollToBottom(); // Scroll to the bottom when a new message is added
+            }
+        }, [messages])
+    );
+
+    const handleViewableItemsChanged = ({ viewableItems }: any) => {
+        const isAtBottom = viewableItems.some(
+            (item: any) => item.index === messages.length - 1
+        );
+        setShowScrollToBottom(!isAtBottom); // Show the button if not at the bottom
+    };
+
+    const handleTyping = (text: string) => {
+        setInput(text);
+
+        if (!isTyping) {
+            setIsTyping(true);
+            socket.emit("typing", { senderId: profile?.id, receiverId });
+        }
+
+        // Clear any existing timeout to reset the "stopTyping" timer
+        clearTimeout(typingTimeout);
+
+        // Set a timeout to emit "stopTyping" after a short delay
+        typingTimeout = setTimeout(() => {
+            setIsTyping(false);
+            socket.emit("stopTyping", { senderId: profile?.id, receiverId });
+        }, 1000); // Stop typing after 1 second of inactivity
+    };
+
+    useEffect(() => {
+        if (socket) {
+            socket.on("typing", ({ senderId }: TypingEvent) => {
+                if (senderId === receiverId) {
+                    setIsOtherUserTyping(true);
+                }
+            });
+
+            socket.on("stopTyping", ({ senderId }: TypingEvent) => {
+                if (senderId === receiverId) {
+                    setIsOtherUserTyping(false);
+                }
+            });
+        }
+
+        return () => {
+            socket?.off("typing");
+            socket?.off("stopTyping");
+        };
+    }, [socket, receiverId]);
+
 
     useFocusEffect(
         React.useCallback(() => {
@@ -205,65 +277,84 @@ export default function MessageScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.heading}>
-                    <View style={styles.backIconAndUsername}>
-                        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 10 }}>
-                            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <View style={styles.avatarAndUsername}>
-                            <Image
-                                source={typeof avatar === 'string' ? { uri: avatar } : undefined}
-                                style={styles.profileImage}
-                            />
-                            <View>
-                                <Text style={styles.headerName}>{name}</Text>
-                                <Text style={styles.activeStatus}>Active 3m ago</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <SafeAreaView style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.heading}>
+                        <View style={styles.backIconAndUsername}>
+                            <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 10 }}>
+                                <MaterialIcons name="arrow-back" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <View style={styles.avatarAndUsername}>
+                                <Image
+                                    source={typeof avatar === 'string' ? { uri: avatar } : undefined}
+                                    style={styles.profileImage}
+                                />
+                                <View>
+                                    <Text style={styles.headerName}>{name}</Text>
+                                    <Text style={styles.activeStatus}>Active 3m ago</Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
-                    <View style={styles.audioAndVideoIcons}>
-                        <TouchableOpacity style={styles.callIcon}>
-                            <MaterialIcons name="call" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <TouchableOpacity>
-                            <MaterialIcons name="videocam" size={24} color="#fff" />
-                        </TouchableOpacity>
+                        <View style={styles.audioAndVideoIcons}>
+                            <TouchableOpacity style={styles.callIcon}>
+                                <MaterialIcons name="call" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <TouchableOpacity>
+                                <MaterialIcons name="videocam" size={24} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
-            </View>
 
-            {/* Messages */}
-            <FlatList
-                data={messages}
-                keyExtractor={(item, index) => item.id || index.toString()}
-                renderItem={renderMessage}
-                contentContainerStyle={styles.messageList}
-            // inverted // Inverted to show latest messages at the bottom
-            />
-
-            {/* Input */}
-            <View style={styles.inputContainer}>
-                <TextInput
-                    value={input}
-                    onChangeText={setInput}
-                    style={[styles.input, { height: inputHeight }]}
-                    placeholder="Type message"
-                    placeholderTextColor="#888"
-                    multiline={true}
-                    keyboardType="default"
-                    returnKeyType="default"
-                    onContentSizeChange={(event) =>
-                        setInputHeight(event.nativeEvent.contentSize.height)
-                    }
+                {/* Messages */}
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    keyExtractor={(item, index) => item.id || index.toString()}
+                    renderItem={renderMessage}
+                    contentContainerStyle={[styles.messageList]}
+                    onContentSizeChange={scrollToBottom} // Automatically scroll when content changes
+                    onLayout={scrollToBottom} // Scroll to the bottom when the FlatList is laid out
+                    onViewableItemsChanged={handleViewableItemsChanged}
                 />
-                <TouchableOpacity onPress={sendMessage} disabled={!input.trim()}>
-                    <MaterialIcons name="send" size={24} color={!input.trim() ? "#888" : "#32CD32"} />
-                </TouchableOpacity>
-            </View>
-        </SafeAreaView>
+                {isOtherUserTyping && (
+                    <Text style={styles.typingIndicator}>Typing...</Text>
+                )}
+
+                {/* Scroll to Bottom Button */}
+                {showScrollToBottom && (
+                    <TouchableOpacity
+                        style={styles.scrollToBottomButton}
+                        onPress={scrollToBottom}
+                    >
+                        <MaterialIcons name="arrow-downward" size={24} color="#fff" />
+                    </TouchableOpacity>
+                )}
+
+                {/* Input */}
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        value={input}
+                        onChangeText={handleTyping}
+                        style={[styles.input, { height: inputHeight }]}
+                        placeholder="Type message"
+                        placeholderTextColor="#888"
+                        multiline={true}
+                        keyboardType="default"
+                        returnKeyType="default"
+                        onContentSizeChange={(event) =>
+                            setInputHeight(event.nativeEvent.contentSize.height)
+                        }
+                    />
+                    <TouchableOpacity onPress={sendMessage} disabled={!input.trim()}>
+                        <MaterialIcons name="send" size={24} color={!input.trim() ? "#888" : "#32CD32"} />
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -273,7 +364,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.light.background,
     },
     header: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 5,
         paddingTop: Platform.select({
             ios: 5, // Set paddingTop to 10 for iOS
             android: 20, // Default or other value for Android
@@ -284,7 +375,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        paddingHorizontal: 16,
+        paddingHorizontal: 10,
         paddingTop: 16,
         paddingBottom: 8,
         backgroundColor: Colors.light.tint,
@@ -324,7 +415,9 @@ const styles = StyleSheet.create({
     },
     messageList: {
         flexGrow: 1,
-        padding: 10,
+        paddingTop: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 60,
     },
     messageContainer: {
         marginVertical: 5,
@@ -390,5 +483,21 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
+    },
+    typingIndicator: {
+        fontSize: 14,
+        color: "#888",
+        fontStyle: "italic",
+        paddingHorizontal: 16,
+        marginBottom: 5,
+    },
+    scrollToBottomButton: {
+        position: "absolute",
+        bottom: 120,
+        alignSelf: "center",
+        backgroundColor: "#32CD32",
+        borderRadius: 20,
+        padding: 10,
+        elevation: 5,
     },
 });
