@@ -28,7 +28,9 @@ type Participant = {
 
 type ChatItem = {
   id: string;
+  receiverId: string,
   name: string;
+  email: string,
   lastMessage: string;
   lastMessageAt: string;
   participants: Participant[];
@@ -69,10 +71,11 @@ export default function ChatsScreen() {
           const otherParticipant = conversation.participants?.find(
             (participant: any) => participant.email !== profile?.email
           );
-
           return {
             id: conversation._id,
+            receiverId: otherParticipant?._id,
             name: otherParticipant?.name || 'Unknown User',
+            email: otherParticipant?.email,
             avatar: otherParticipant?.avatar || 'https://example.com/default-avatar.png',
             lastMessage: conversation.lastMessage,
             lastMessageAt: conversation.lastMessageAt,
@@ -131,7 +134,7 @@ export default function ChatsScreen() {
     return (
       <TouchableOpacity style={styles.chatItem} onPress={() => router.push({
         pathname: `/[chatId]`,
-        params: { chatId: item.id }
+        params: { chatId: item.id, name: item.name, avatar: item.avatar, email: item.email, receiverId: item.receiverId }
       })}>
         <View style={styles.avatarContainer}>
           <Image
@@ -246,14 +249,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 10,
     backgroundColor: '#32CD32',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 10,
+    // marginBottom: 10,
   },
   chatList: {
     paddingVertical: 10,

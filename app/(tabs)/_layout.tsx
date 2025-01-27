@@ -9,8 +9,15 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 export default function TabLayout() {
   const pathname = usePathname();
 
-  // Match dynamic chat detail route accurately
-  const isChatDetailScreen = /^\/[a-zA-Z0-9]+$/.test(pathname);
+  const staticPaths = ['/chats', '/people', '/profile'];
+
+  // Determine if the current path is dynamic
+  const isDynamicPath = !staticPaths.includes(pathname) && /^\/[a-zA-Z0-9]+$/.test(pathname);
+
+  // useEffect(() => {
+  //   console.log('Current pathname:', pathname); // Log pathname for debugging
+  //   console.log('Is dynamic path:', isDynamicPath);
+  // }, [pathname]);
 
   return (
     <Tabs
@@ -19,7 +26,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: isChatDetailScreen
+        tabBarStyle: isDynamicPath
           ? { display: 'none' }
           : Platform.select({
             ios: {

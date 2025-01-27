@@ -13,8 +13,12 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Colors } from "@/constants/Colors";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { BASE_URL } from '@env';
-import * as SecureStore from 'expo-secure-store';
+import { BASE_URL } from "@env";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+import { useProfile } from "@/context/ProfileContext";
+import io from "socket.io-client"; // Import Socket.IO client
+import { useFocusEffect } from "@react-navigation/native";
 
 type Message = {
     id: string;
@@ -27,34 +31,68 @@ type Message = {
 
 export default function MessageScreen() {
     const router = useRouter();
-    const { chatId } = useLocalSearchParams();
+    const { profile } = useProfile();
+    const { chatId, name, avatar, receiverId, email } = useLocalSearchParams();
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [inputHeight, setInputHeight] = useState(40);
+    const [input, setInput] = useState("");
+    const [socket, setSocket] = useState<any>(null);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            const socketInstance = io("http://192.168.1.163:3000", {
+                transports: ["websocket"],
+                query: {
+                    token: SecureStore.getItemAsync("authToken"),
+                },
+            });
+
+            setSocket(socketInstance);
+
+            socketInstance.emit("joinRoom", profile?.id);
+
+            // Listen for incoming messages
+            socketInstance.on("message", (newMessage: any) => {
+                const formattedMessage: Message = {
+                    id: newMessage.id,
+                    text: newMessage.content,
+                    type: newMessage.sender._id === profile?.id ? "sent" : "received",
+                    media: newMessage.media || undefined,
+                    audioDuration: newMessage.audioDuration || undefined,
+                };
+                // setMessages((prevMessages) => [formattedMessage, ...prevMessages]);
+                setMessages((prevMessages) => [...prevMessages, formattedMessage]);
+            });
+
+            // Clean up socket connection
+            return () => {
+                socketInstance.disconnect();
+            };
+        }, [profile?.id])
+    );
 
     const fetchMessages = async () => {
         setIsLoading(true);
         try {
-            const token = await SecureStore.getItemAsync('authToken');
+            const token = await SecureStore.getItemAsync("authToken");
             if (!token) {
-                throw new Error('Authentication token is missing. Please log in again.');
+                throw new Error("Authentication token is missing. Please log in again.");
             }
-            const response = await fetch(
-                `${BASE_URL}/conversations/${chatId}/messages`, {
+            const response = await fetch(`${BASE_URL}/conversations/${chatId}/messages`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
-            }
-            );
+            });
             const data = await response.json();
-            console.log("data: ", chatId)
 
             if (data.status === "success") {
                 const formattedMessages = data.data.map((msg: any) => ({
                     id: msg._id,
                     text: msg.content,
-                    type: msg.sender.email === "yaqoubalhassan@gmail.com" ? "sent" : "received",
-                    media: msg.type === "image" || msg.type === "video" ? msg.media : undefined,
-                    audioDuration: msg.type === "audio" ? msg.audioDuration : undefined,
+                    type: msg.sender._id === profile?.id ? "sent" : "received",
+                    media: msg.media || undefined,
+                    audioDuration: msg.audioDuration || undefined,
                 }));
                 setMessages(formattedMessages);
             } else {
@@ -67,15 +105,74 @@ export default function MessageScreen() {
         }
     };
 
-    useEffect(() => {
-        fetchMessages();
-    }, []);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchMessages();
+        }, [])
+    );
+
+    // useEffect(() => {
+    //     fetchMessages();
+    // }, []);
+
+    const sendMessage = async () => {
+        if (!input.trim()) return;
+
+        const newMessage: Message = {
+            id: Date.now().toString(),
+            text: input,
+            type: "sent",
+            isError: false,
+        };
+
+        // Optimistically update the UI
+        // setMessages((prevMessages) => [newMessage, ...prevMessages]);
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        setInput("");
+
+        try {
+            const token = await SecureStore.getItemAsync("authToken");
+            const response = await fetch(`${BASE_URL}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    receiverId: receiverId,
+                    content: input,
+                }),
+            });
+
+            const data = await response.json();
+            if (data.status !== "success") {
+                throw new Error("Failed to send message");
+            }
+        } catch (error) {
+            console.error("Error sending message:", error);
+            // Mark the message as an error if it fails
+            setMessages((prevMessages) =>
+                prevMessages.map((msg) => {
+                    if (msg.id === newMessage.id) {
+                        return { ...msg, isError: true }; // Mark message as an error
+                    }
+                    return msg; // Leave other messages unchanged
+                })
+            );
+
+        }
+    };
 
     const renderMessage = ({ item }: { item: Message }) => {
         const isSent = item.type === "sent";
         const messageStyles = [
             styles.message,
             isSent ? styles.sentMessage : styles.receivedMessage,
+        ];
+
+        const messageTextStyles = [
+            styles.messageText,
+            isSent ? styles.sentMessageText : styles.receivedMessageText,
         ];
 
         return (
@@ -92,7 +189,7 @@ export default function MessageScreen() {
                     />
                 ) : (
                     <View style={messageStyles}>
-                        <Text style={styles.messageText}>{item.text}</Text>
+                        <Text style={messageTextStyles}>{item.text}</Text>
                     </View>
                 )}
             </View>
@@ -118,11 +215,11 @@ export default function MessageScreen() {
                         </TouchableOpacity>
                         <View style={styles.avatarAndUsername}>
                             <Image
-                                source={{ uri: "https://i.pravatar.cc/300" }}
+                                source={typeof avatar === 'string' ? { uri: avatar } : undefined}
                                 style={styles.profileImage}
                             />
                             <View>
-                                <Text style={styles.headerName}>Kristin Watson</Text>
+                                <Text style={styles.headerName}>{name}</Text>
                                 <Text style={styles.activeStatus}>Active 3m ago</Text>
                             </View>
                         </View>
@@ -141,23 +238,29 @@ export default function MessageScreen() {
             {/* Messages */}
             <FlatList
                 data={messages}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item.id || index.toString()}
                 renderItem={renderMessage}
                 contentContainerStyle={styles.messageList}
+            // inverted // Inverted to show latest messages at the bottom
             />
 
             {/* Input */}
             <View style={styles.inputContainer}>
-                <TouchableOpacity>
-                    <MaterialIcons name="attach-file" size={24} color={Colors.light.tint} />
-                </TouchableOpacity>
                 <TextInput
-                    style={styles.input}
+                    value={input}
+                    onChangeText={setInput}
+                    style={[styles.input, { height: inputHeight }]}
                     placeholder="Type message"
                     placeholderTextColor="#888"
+                    multiline={true}
+                    keyboardType="default"
+                    returnKeyType="default"
+                    onContentSizeChange={(event) =>
+                        setInputHeight(event.nativeEvent.contentSize.height)
+                    }
                 />
-                <TouchableOpacity>
-                    <MaterialIcons name="send" size={24} color={Colors.light.tint} />
+                <TouchableOpacity onPress={sendMessage} disabled={!input.trim()}>
+                    <MaterialIcons name="send" size={24} color={!input.trim() ? "#888" : "#32CD32"} />
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -171,7 +274,10 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 10,
-        paddingTop: 20,
+        paddingTop: Platform.select({
+            ios: 5, // Set paddingTop to 10 for iOS
+            android: 20, // Default or other value for Android
+        }),
         backgroundColor: "#32CD32",
     },
     heading: {
@@ -222,23 +328,35 @@ const styles = StyleSheet.create({
     },
     messageContainer: {
         marginVertical: 5,
+
     },
     message: {
         padding: 10,
         borderRadius: 10,
         maxWidth: "75%",
     },
-    sentMessage: {
-        backgroundColor: "#32CD32",
-        alignSelf: "flex-end",
-    },
     receivedMessage: {
-        backgroundColor: "#f0f0f0",
+        backgroundColor: "#32CD32",
         alignSelf: "flex-start",
+    },
+    sentMessage: {
+        backgroundColor: "#f0f0f0",
+        alignSelf: "flex-end",
     },
     messageText: {
         fontSize: 14,
+        color: "#fff",
+        lineHeight: 20
+    },
+    receivedMessageText: {
+        fontSize: 14,
+        color: "#fff",
+        lineHeight: 20
+    },
+    sentMessageText: {
+        fontSize: 14,
         color: "#000",
+        lineHeight: 20
     },
     audioText: {
         fontSize: 14,
@@ -265,6 +383,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: "#f0f0f0",
         marginHorizontal: 10,
+        minHeight: 40, // Minimum height for the input
+        textAlignVertical: "top",
     },
     loadingContainer: {
         flex: 1,
