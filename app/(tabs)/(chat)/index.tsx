@@ -18,6 +18,7 @@ import { BASE_URL } from '@env';
 import { useProfile } from '@/context/ProfileContext';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 type Participant = {
   _id: string;
@@ -101,9 +102,14 @@ export default function ChatsScreen() {
     };
   }, [profile?.email]);
 
-  useEffect(() => {
-    fetchConversations(page, true);
-  }, [page, fetchConversations]);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchConversations(page, true);
+    }, [page, fetchConversations])
+  );
+  // useEffect(() => {
+  //   fetchConversations(page, true);
+  // }, [page, fetchConversations]);
 
   const handleSearch = (text: string) => {
     setSearchText(text);

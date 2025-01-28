@@ -5,8 +5,6 @@ import {
     TextInput,
     TouchableOpacity,
     FlatList,
-    Image,
-    StyleSheet,
     SafeAreaView,
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -20,15 +18,11 @@ import { Platform } from "react-native";
 import { useProfile } from "@/context/ProfileContext";
 import io from "socket.io-client"; // Import Socket.IO client
 import { useFocusEffect } from "@react-navigation/native";
+import { Header } from "@/components/Header";
+import MessageItem from "@/components/MessageItem";
+import styles from "@/styles/messageStyles";
+import { Message } from "@/types/Message";
 
-type Message = {
-    id: string;
-    text: string;
-    type: "sent" | "received";
-    isError?: boolean;
-    media?: string; // Image or video URL
-    audioDuration?: string; // For audio messages
-};
 
 interface TypingEvent {
     senderId: string; // Adjust type based on your actual data
@@ -47,6 +41,12 @@ export default function MessageScreen() {
     const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
     const flatListRef = useRef<FlatList>(null); // Ref for FlatList
     const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true); // Track if there are more messages
+    const [loadingMore, setLoadingMore] = useState(false);
+
+    const safeName = Array.isArray(name) ? name[0] : name || "Unknown User";
+    const safeAvatar = Array.isArray(avatar) ? avatar[0] : avatar || "default-avatar-url";
 
     let typingTimeout: NodeJS.Timeout | undefined;
 
@@ -54,6 +54,12 @@ export default function MessageScreen() {
         flatListRef.current?.scrollToEnd({ animated: true });
         setShowScrollToBottom(false); // Hide the button after scrolling
     };
+
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchMessages();
+        }, [currentPage])
+    );
 
     useFocusEffect(
 
@@ -110,7 +116,6 @@ export default function MessageScreen() {
         };
     }, [socket, receiverId]);
 
-
     useFocusEffect(
         React.useCallback(() => {
             const socketInstance = io("http://192.168.1.163:3000", {
@@ -144,18 +149,24 @@ export default function MessageScreen() {
         }, [profile?.id])
     );
 
-    const fetchMessages = async () => {
-        setIsLoading(true);
+    const fetchMessages = async (page = 1) => {
+        if (loadingMore || !hasMore) return; // Prevent multiple requests
+
+        setLoadingMore(true);
         try {
             const token = await SecureStore.getItemAsync("authToken");
             if (!token) {
                 throw new Error("Authentication token is missing. Please log in again.");
             }
-            const response = await fetch(`${BASE_URL}/conversations/${chatId}/messages`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+
+            const response = await fetch(
+                `${BASE_URL}/conversations/${chatId}/messages?page=${page}&limit=20`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
             const data = await response.json();
 
             if (data.status === "success") {
@@ -166,26 +177,19 @@ export default function MessageScreen() {
                     media: msg.media || undefined,
                     audioDuration: msg.audioDuration || undefined,
                 }));
-                setMessages(formattedMessages);
+                setMessages((prevMessages) => [...prevMessages, ...formattedMessages]); // Prepend older messages
+                setHasMore(data.hasMore);
             } else {
                 console.error("Failed to fetch messages");
             }
         } catch (error) {
             console.error("Error fetching messages:", error);
         } finally {
-            setIsLoading(false);
+            setLoadingMore(false);
         }
     };
 
-    useFocusEffect(
-        React.useCallback(() => {
-            fetchMessages();
-        }, [])
-    );
 
-    // useEffect(() => {
-    //     fetchMessages();
-    // }, []);
 
     const sendMessage = async () => {
         if (!input.trim()) return;
@@ -236,36 +240,7 @@ export default function MessageScreen() {
     };
 
     const renderMessage = ({ item }: { item: Message }) => {
-        const isSent = item.type === "sent";
-        const messageStyles = [
-            styles.message,
-            isSent ? styles.sentMessage : styles.receivedMessage,
-        ];
-
-        const messageTextStyles = [
-            styles.messageText,
-            isSent ? styles.sentMessageText : styles.receivedMessageText,
-        ];
-
-        return (
-            <View style={[styles.messageContainer, isSent && { alignItems: "flex-end" }]}>
-                {item.audioDuration ? (
-                    <View style={messageStyles}>
-                        <MaterialIcons name="play-arrow" size={24} color="#fff" />
-                        <Text style={styles.audioText}>{item.audioDuration}</Text>
-                    </View>
-                ) : item.media ? (
-                    <Image
-                        source={{ uri: item.media }}
-                        style={[styles.media, isSent && { borderColor: "#32CD32" }]}
-                    />
-                ) : (
-                    <View style={messageStyles}>
-                        <Text style={messageTextStyles}>{item.text}</Text>
-                    </View>
-                )}
-            </View>
-        );
+        return <MessageItem message={item} />;
     };
 
     if (isLoading) {
@@ -280,46 +255,40 @@ export default function MessageScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : undefined}>
             <SafeAreaView style={styles.container}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.heading}>
-                        <View style={styles.backIconAndUsername}>
-                            <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 10 }}>
-                                <MaterialIcons name="arrow-back" size={24} color="#fff" />
-                            </TouchableOpacity>
-                            <View style={styles.avatarAndUsername}>
-                                <Image
-                                    source={typeof avatar === 'string' ? { uri: avatar } : undefined}
-                                    style={styles.profileImage}
-                                />
-                                <View>
-                                    <Text style={styles.headerName}>{name}</Text>
-                                    <Text style={styles.activeStatus}>Active 3m ago</Text>
-                                </View>
-                            </View>
-                        </View>
-                        <View style={styles.audioAndVideoIcons}>
-                            <TouchableOpacity style={styles.callIcon}>
-                                <MaterialIcons name="call" size={24} color="#fff" />
-                            </TouchableOpacity>
-                            <TouchableOpacity>
-                                <MaterialIcons name="videocam" size={24} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
+
+                <Header
+                    onBackPress={() => router.back()}
+                    name={safeName}
+                    avatar={safeAvatar}
+                    activeStatus="Active 3m ago"
+                />
 
                 {/* Messages */}
                 <FlatList
+                    ListHeaderComponent={
+                        loadingMore ? (
+                            <ActivityIndicator size="small" color={Colors.light.tint} />
+                        ) : null
+                    }
                     ref={flatListRef}
                     data={messages}
                     keyExtractor={(item, index) => item.id || index.toString()}
                     renderItem={renderMessage}
                     contentContainerStyle={[styles.messageList]}
-                    onContentSizeChange={scrollToBottom} // Automatically scroll when content changes
-                    onLayout={scrollToBottom} // Scroll to the bottom when the FlatList is laid out
                     onViewableItemsChanged={handleViewableItemsChanged}
+                    onEndReachedThreshold={0.1} // Load more when 10% from the top
+                    onEndReached={() => {
+                        if (!loadingMore && hasMore) {
+                            setCurrentPage((prevPage) => {
+                                const nextPage = prevPage + 1;
+                                fetchMessages(nextPage); // Fetch the next page
+                                return nextPage;
+                            });
+                        }
+                    }}
                 />
+
+
                 {isOtherUserTyping && (
                     <Text style={styles.typingIndicator}>Typing...</Text>
                 )}
@@ -358,146 +327,3 @@ export default function MessageScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.background,
-    },
-    header: {
-        paddingHorizontal: 5,
-        paddingTop: Platform.select({
-            ios: 5, // Set paddingTop to 10 for iOS
-            android: 20, // Default or other value for Android
-        }),
-        backgroundColor: "#32CD32",
-    },
-    heading: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: 10,
-        paddingTop: 16,
-        paddingBottom: 8,
-        backgroundColor: Colors.light.tint,
-    },
-    backIconAndUsername: {
-        flexDirection: "row",
-        justifyContent: "flex-start",
-        alignItems: "center",
-    },
-    avatarAndUsername: {
-        flexDirection: "row",
-        justifyContent: "flex-start",
-        alignItems: "center",
-    },
-    profileImage: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginHorizontal: 10,
-    },
-    headerName: {
-        fontSize: 16,
-        fontWeight: "bold",
-        color: "#fff",
-    },
-    audioAndVideoIcons: {
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        alignItems: "center",
-    },
-    callIcon: {
-        marginRight: 15,
-    },
-    activeStatus: {
-        fontSize: 12,
-        color: "#f0f0f0",
-    },
-    messageList: {
-        flexGrow: 1,
-        paddingTop: 16,
-        paddingHorizontal: 16,
-        paddingBottom: 60,
-    },
-    messageContainer: {
-        marginVertical: 5,
-
-    },
-    message: {
-        padding: 10,
-        borderRadius: 10,
-        maxWidth: "75%",
-    },
-    receivedMessage: {
-        backgroundColor: "#32CD32",
-        alignSelf: "flex-start",
-    },
-    sentMessage: {
-        backgroundColor: "#f0f0f0",
-        alignSelf: "flex-end",
-    },
-    messageText: {
-        fontSize: 14,
-        color: "#fff",
-        lineHeight: 20
-    },
-    receivedMessageText: {
-        fontSize: 14,
-        color: "#fff",
-        lineHeight: 20
-    },
-    sentMessageText: {
-        fontSize: 14,
-        color: "#000",
-        lineHeight: 20
-    },
-    audioText: {
-        fontSize: 14,
-        color: "#fff",
-        marginLeft: 5,
-    },
-    media: {
-        width: 150,
-        height: 150,
-        borderRadius: 10,
-        borderWidth: 1,
-    },
-    inputContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        padding: 10,
-        borderTopWidth: 1,
-        borderTopColor: "#ddd",
-        backgroundColor: "#fff",
-    },
-    input: {
-        flex: 1,
-        padding: 10,
-        borderRadius: 20,
-        backgroundColor: "#f0f0f0",
-        marginHorizontal: 10,
-        minHeight: 40, // Minimum height for the input
-        textAlignVertical: "top",
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    typingIndicator: {
-        fontSize: 14,
-        color: "#888",
-        fontStyle: "italic",
-        paddingHorizontal: 16,
-        marginBottom: 5,
-    },
-    scrollToBottomButton: {
-        position: "absolute",
-        bottom: 120,
-        alignSelf: "center",
-        backgroundColor: "#32CD32",
-        borderRadius: 20,
-        padding: 10,
-        elevation: 5,
-    },
-});
