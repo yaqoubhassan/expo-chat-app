@@ -70,11 +70,43 @@ export default function MessageScreen() {
         }, [messages])
     );
 
+    const markAsRead = async (messageId: string) => {
+        try {
+            const token = await SecureStore.getItemAsync("authToken");
+            await fetch(`${BASE_URL}/messages/${messageId}/read`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            // Notify sender about read status
+            socket.emit("messageRead", {
+                messageId,
+                receiverId: profile?.id,
+            });
+        } catch (error) {
+            console.error("Error marking message as read:", error);
+        }
+    };
+
     const handleViewableItemsChanged = ({ viewableItems }: any) => {
         const isAtBottom = viewableItems.some(
             (item: any) => item.index === messages.length - 1
         );
-        setShowScrollToBottom(!isAtBottom); // Show the button if not at the bottom
+        setShowScrollToBottom(!isAtBottom);
+        viewableItems.forEach((item: any) => {
+            if (item.item.type === "received" && !item.item.read) {
+                markAsRead(item.item.id);
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === item.item.id ? { ...msg, read: true } : msg
+                    )
+                );
+            }
+        });
+    };
+
+    const viewabilityConfig = {
+        itemVisiblePercentThreshold: 50,
     };
 
     const handleTyping = (text: string) => {
@@ -85,32 +117,48 @@ export default function MessageScreen() {
             socket.emit("typing", { senderId: profile?.id, receiverId });
         }
 
-        // Clear any existing timeout to reset the "stopTyping" timer
         clearTimeout(typingTimeout);
 
-        // Set a timeout to emit "stopTyping" after a short delay
         typingTimeout = setTimeout(() => {
             setIsTyping(false);
             socket.emit("stopTyping", { senderId: profile?.id, receiverId });
-        }, 1000); // Stop typing after 1 second of inactivity
+        }, 1000);
     };
 
     useEffect(() => {
         if (socket) {
+            socket.on("message", (newMessage: any) => {
+                const formattedMessage: Message = {
+                    id: newMessage.id,
+                    text: newMessage.content,
+                    type: newMessage.sender === profile?.id ? "sent" : "received",
+                    createdAt: newMessage.createdAt || Date.now(),
+                    read: newMessage.read || false,
+                };
+
+                setMessages((prevMessages) => [...prevMessages, formattedMessage]);
+            });
+
+            socket.on("messageRead", ({ messageId }: { messageId: string }) => {
+                setMessages((prevMessages) =>
+                    prevMessages.map((msg) =>
+                        msg.id === messageId ? { ...msg, read: true } : msg
+                    )
+                );
+            });
+
             socket.on("typing", ({ senderId }: TypingEvent) => {
-                if (senderId === receiverId) {
-                    setIsOtherUserTyping(true);
-                }
+                if (senderId === receiverId) setIsOtherUserTyping(true);
             });
 
             socket.on("stopTyping", ({ senderId }: TypingEvent) => {
-                if (senderId === receiverId) {
-                    setIsOtherUserTyping(false);
-                }
+                if (senderId === receiverId) setIsOtherUserTyping(false);
             });
         }
 
         return () => {
+            socket?.off("message");
+            socket?.off("messageRead");
             socket?.off("typing");
             socket?.off("stopTyping");
         };
@@ -126,30 +174,16 @@ export default function MessageScreen() {
             });
 
             setSocket(socketInstance);
-
             socketInstance.emit("joinRoom", profile?.id);
 
-            // Listen for incoming messages
-            socketInstance.on("message", (newMessage: any) => {
-                const formattedMessage: Message = {
-                    id: newMessage.id,
-                    text: newMessage.content,
-                    type: newMessage.sender._id === profile?.id ? "sent" : "received",
-                    media: newMessage.media || undefined,
-                    audioDuration: newMessage.audioDuration || undefined,
-                };
-                // setMessages((prevMessages) => [formattedMessage, ...prevMessages]);
-                setMessages((prevMessages) => [...prevMessages, formattedMessage]);
-            });
-
-            // Clean up socket connection
             return () => {
                 socketInstance.disconnect();
             };
-        }, [profile?.id])
+        }, [receiverId])
     );
 
     const fetchMessages = async (page = 1) => {
+        // setIsLoading(true);
         if (loadingMore || !hasMore) return; // Prevent multiple requests
 
         setLoadingMore(true);
@@ -174,6 +208,8 @@ export default function MessageScreen() {
                     id: msg._id,
                     text: msg.content,
                     type: msg.sender._id === profile?.id ? "sent" : "received",
+                    createdAt: msg.createdAt || Date.now(),
+                    read: msg.read || false,
                     media: msg.media || undefined,
                     audioDuration: msg.audioDuration || undefined,
                 }));
@@ -185,26 +221,14 @@ export default function MessageScreen() {
         } catch (error) {
             console.error("Error fetching messages:", error);
         } finally {
+            // setIsLoading(false);
             setLoadingMore(false);
+
         }
     };
 
-
-
     const sendMessage = async () => {
         if (!input.trim()) return;
-
-        const newMessage: Message = {
-            id: Date.now().toString(),
-            text: input,
-            type: "sent",
-            isError: false,
-        };
-
-        // Optimistically update the UI
-        // setMessages((prevMessages) => [newMessage, ...prevMessages]);
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
-        setInput("");
 
         try {
             const token = await SecureStore.getItemAsync("authToken");
@@ -219,22 +243,25 @@ export default function MessageScreen() {
                     content: input,
                 }),
             });
-
             const data = await response.json();
+
+            const newMessage: Message = {
+                id: data.data.message._id,
+                text: input,
+                type: "sent",
+                isError: false,
+                createdAt: new Date,
+                read: data.data.message.read
+            };
+
+            setMessages((prevMessages) => [...prevMessages, newMessage]);
+            setInput("");
+
             if (data.status !== "success") {
                 throw new Error("Failed to send message");
             }
         } catch (error) {
             console.error("Error sending message:", error);
-            // Mark the message as an error if it fails
-            setMessages((prevMessages) =>
-                prevMessages.map((msg) => {
-                    if (msg.id === newMessage.id) {
-                        return { ...msg, isError: true }; // Mark message as an error
-                    }
-                    return msg; // Leave other messages unchanged
-                })
-            );
 
         }
     };
@@ -276,6 +303,7 @@ export default function MessageScreen() {
                     renderItem={renderMessage}
                     contentContainerStyle={[styles.messageList]}
                     onViewableItemsChanged={handleViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
                     onEndReachedThreshold={0.1} // Load more when 10% from the top
                     onEndReached={() => {
                         if (!loadingMore && hasMore) {
@@ -299,11 +327,12 @@ export default function MessageScreen() {
                         style={styles.scrollToBottomButton}
                         onPress={scrollToBottom}
                     >
-                        <MaterialIcons name="arrow-downward" size={24} color="#fff" />
+                        <MaterialIcons name="arrow-downward" size={24} color="#000" />
                     </TouchableOpacity>
                 )}
 
                 {/* Input */}
+
                 <View style={styles.inputContainer}>
                     <TextInput
                         value={input}
@@ -326,4 +355,3 @@ export default function MessageScreen() {
         </KeyboardAvoidingView>
     );
 }
-

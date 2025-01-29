@@ -62,19 +62,6 @@ export default StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 60,
     },
-    messageContainer: {
-        marginVertical: 5,
-
-    },
-    message: {
-        padding: 10,
-        borderRadius: 10,
-        maxWidth: "75%",
-    },
-    receivedMessage: {
-        backgroundColor: "#32CD32",
-        alignSelf: "flex-start",
-    },
     sentMessage: {
         backgroundColor: "#f0f0f0",
         alignSelf: "flex-end",
@@ -137,9 +124,11 @@ export default StyleSheet.create({
     scrollToBottomButton: {
         position: "absolute",
         bottom: 120,
-        alignSelf: "center",
-        backgroundColor: "#32CD32",
-        borderRadius: 20,
+        alignSelf: "flex-end",
+        right: 5,
+        borderWidth: 0,
+        backgroundColor: "#D6DFD4",
+        borderRadius: 5,
         padding: 10,
         elevation: 5,
     },

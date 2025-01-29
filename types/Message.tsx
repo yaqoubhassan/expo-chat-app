@@ -3,6 +3,8 @@ export interface Message {
     text: string;
     type: "sent" | "received";
     isError?: boolean;
-    media?: string; // Image or video URL
-    audioDuration?: string; // For audio messages
+    media?: string;
+    audioDuration?: string;
+    createdAt?: Date;
+    read?: boolean;
 }
