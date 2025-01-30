@@ -19,6 +19,7 @@ import { useProfile } from '@/context/ProfileContext';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import io from "socket.io-client";
 
 type Participant = {
   _id: string;
@@ -49,6 +50,7 @@ export default function ChatsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [socket, setSocket] = useState<any>(null);
 
   const fetchConversations = useCallback(async (pageNumber = 1, reset = false) => {
     let isMounted = true;
@@ -107,9 +109,60 @@ export default function ChatsScreen() {
       fetchConversations(page, true);
     }, [page, fetchConversations])
   );
-  // useEffect(() => {
-  //   fetchConversations(page, true);
-  // }, [page, fetchConversations]);
+
+  useEffect(() => {
+    let socketInstance: any = null;
+
+    const setupSocket = async () => {
+      const token = await SecureStore.getItemAsync('authToken');
+      if (!token) return;
+
+      socketInstance = io("http://192.168.1.163:3000", {
+        transports: ['websocket'],
+        query: { token },
+      });
+
+      setSocket(socketInstance);
+
+      socketInstance.emit('joinRoom', profile?.id);
+
+      socketInstance.off('message'); // ✅ Prevent duplicate listeners
+      socketInstance.on('message', (updatedChat: any) => {
+        const formattedChat: ChatItem = {
+          id: updatedChat.conversationId,
+          receiverId: updatedChat.receiver,
+          name: updatedChat.senderName,
+          email: updatedChat.senderEmail,
+          lastMessage: updatedChat.content,
+          lastMessageAt: updatedChat.createdAt,
+          participants: [updatedChat.sender, updatedChat.receiver],
+          avatar: updatedChat.senderAvatar,
+          isActive: false,
+        };
+
+        setChats((prevChats) => {
+          // Ensure we update existing chats instead of duplicating them
+          const existingChatIndex = prevChats.findIndex((chat) => chat.id === formattedChat.id);
+          if (existingChatIndex !== -1) {
+            const updatedChats = [...prevChats];
+            updatedChats[existingChatIndex] = formattedChat;
+            return updatedChats;
+          }
+          return [...prevChats, formattedChat];
+        });
+      });
+    };
+
+    setupSocket();
+
+    return () => {
+      if (socketInstance) {
+        socketInstance.off('message');
+        socketInstance.disconnect();
+      }
+    };
+  }, [profile?.id]);
+
 
   const handleSearch = (text: string) => {
     setSearchText(text);
@@ -128,10 +181,6 @@ export default function ChatsScreen() {
   };
 
   const renderChatItem = ({ item }: { item: ChatItem }) => {
-    // console.log("Item: ", item)
-    // const otherParticipant = item.participants?.find(
-    //   (participant) => participant.email !== profile?.email
-    // );
 
     const formattedTime = formatDistanceToNow(parseISO(item.lastMessageAt), {
       addSuffix: true,
@@ -149,7 +198,7 @@ export default function ChatsScreen() {
           />
         </View>
         <View style={styles.chatDetails}>
-          <Text style={styles.chatName}>{item.name || 'Unknown User1'}</Text>
+          <Text style={styles.chatName}>{item.name || 'Unknown User'}</Text>
           <Text style={styles.chatMessage} numberOfLines={1}>
             {item.lastMessage || 'No messages yet'}
           </Text>
