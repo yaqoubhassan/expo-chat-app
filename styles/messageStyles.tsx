@@ -56,6 +56,20 @@ export default StyleSheet.create({
         fontSize: 12,
         color: "#f0f0f0",
     },
+    dateHeader: {
+        flexDirection: "row",
+        alignSelf: "center",
+        fontSize: 14,
+        color: "#000",
+        backgroundColor: "#FAFAF8",
+        textAlign: "center",
+        marginVertical: 8,
+        elevation: 1,
+        maxWidth: "50%",
+        paddingVertical: 5,
+        paddingHorizontal: 20,
+        borderRadius: 10
+    },
     messageList: {
         flexGrow: 1,
         paddingTop: 16,
