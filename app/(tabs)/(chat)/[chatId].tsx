@@ -22,6 +22,7 @@ import { Header } from "@/components/Header";
 import MessageItem from "@/components/MessageItem";
 import styles from "@/styles/messageStyles";
 import { Message } from "@/types/Message";
+import { groupMessagesByDate } from "@/utils/groupeMessagesByDate";
 
 
 interface TypingEvent {
@@ -266,6 +267,17 @@ export default function MessageScreen() {
         }
     };
 
+    const groupedMessages = groupMessagesByDate(messages);
+
+    const renderGroup = ({ item }: { item: any }) => (
+        <View>
+            <Text style={styles.dateHeader}>{item.label}</Text>
+            {item.messages.map((msg: Message, index: number) => (
+                <MessageItem key={msg.id || index} message={msg} />
+            ))}
+        </View>
+    );
+
     const renderMessage = ({ item }: { item: Message }) => {
         return <MessageItem message={item} />;
     };
@@ -298,18 +310,18 @@ export default function MessageScreen() {
                         ) : null
                     }
                     ref={flatListRef}
-                    data={messages}
-                    keyExtractor={(item, index) => item.id || index.toString()}
-                    renderItem={renderMessage}
-                    contentContainerStyle={[styles.messageList]}
+                    data={groupedMessages}
+                    keyExtractor={(item, index) => `group-${index}`}
+                    renderItem={renderGroup}
+                    contentContainerStyle={styles.messageList}
                     onViewableItemsChanged={handleViewableItemsChanged}
                     viewabilityConfig={viewabilityConfig}
-                    onEndReachedThreshold={0.1} // Load more when 10% from the top
+                    onEndReachedThreshold={0.1}
                     onEndReached={() => {
                         if (!loadingMore && hasMore) {
                             setCurrentPage((prevPage) => {
                                 const nextPage = prevPage + 1;
-                                fetchMessages(nextPage); // Fetch the next page
+                                fetchMessages(nextPage);
                                 return nextPage;
                             });
                         }
