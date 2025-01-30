@@ -18,43 +18,20 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         : "N/A";
 
     return (
-        // <View style={[styles.messageContainer, isSent && { alignItems: "flex-end" }]}>
-        //     <View
-        //         style={[styles.message, isSent ? styles.sentMessage : styles.receivedMessage]}
-        //     >
-        //         <Text
-        //             style={[
-        //                 styles.messageText,
-        //                 isSent ? styles.sentMessageText : styles.receivedMessageText,
-        //             ]}
-        //         >
-        //             {message.text}
-        //         </Text>
-        //         <View style={styles.infoRow}>
-        //             <Text style={styles.timestamp}>{formattedTime}</Text>
-        //             {isSent && (
-        //                 <MaterialIcons
-        //                     name={message.read ? "done-all" : "done"}
-        //                     size={16}
-        //                     color={message.read ? "#32CD32" : "#6b6b6b"}
-        //                     style={styles.readIcon}
-        //                 />
-        //             )}
-        //         </View>
-        //     </View>
-        // </View>
         <View style={[styles.messageContainer, isSent && { justifyContent: "flex-end", }]}>
             <View style={isSent ? styles.messageRight : styles.messageleft}>
                 <Text style={isSent ? { color: "#000" } : { color: "#000" }}>{message.text}</Text>
                 <View style={styles.sentTime}>
                     <Text style={styles.timestamp}>{formattedTime}</Text>
 
-                    <MaterialIcons
-                        name="done-all"
-                        size={16}
-                        color="#32CD32"
-                        style={styles.readIcon}
-                    />
+                    {isSent && (
+                        <MaterialIcons
+                            name={message.read ? "done-all" : "done"}
+                            size={16}
+                            color={message.read ? "#32CD32" : "#6b6b6b"}
+                            style={styles.readIcon}
+                        />
+                    )}
                 </View>
 
                 <View style={isSent ? styles.rightArrowBorder : styles.leftArrowBorder}></View>
@@ -65,54 +42,6 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
 };
 
 const styles = StyleSheet.create({
-    // messageContainer: {
-    //     marginVertical: 5,
-    //     paddingHorizontal: 5,
-    // },
-    // message: {
-    //     padding: 12,
-    //     borderRadius: 16,
-    //     maxWidth: "70%",
-    //     elevation: 1,
-    //     shadowColor: "#000",
-    //     shadowOffset: { width: 0, height: 2 },
-    //     shadowOpacity: 0.15,
-    //     shadowRadius: 3,
-    // },
-    // receivedMessage: {
-    //     backgroundColor: "#fcfdf6",
-    //     alignSelf: "flex-start",
-    //     borderTopLeftRadius: 0,
-    //     marginVertical: 4,
-    // },
-    // sentMessage: {
-    //     backgroundColor: "#E4FFCA",
-    //     alignSelf: "flex-end",
-    //     borderTopRightRadius: 0,
-    //     marginVertical: 4,
-    // },
-    // messageText: {
-    //     fontSize: 14,
-    // },
-    // receivedMessageText: {
-    //     color: "#000",
-    // },
-    // sentMessageText: {
-    //     color: "#000",
-    // },
-    // infoRow: {
-    //     flexDirection: "row",
-    //     alignItems: "center",
-    //     justifyContent: "flex-end",
-    //     marginTop: 5,
-    // },
-    // timestamp: {
-    //     fontSize: 12,
-    //     color: "#6b6b6b",
-    // },
-    // readIcon: {
-    //     marginLeft: 5,
-    // },
     messageContainer: {
         flexDirection: "row",
         marginVertical: 8,
