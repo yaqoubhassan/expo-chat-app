@@ -48,7 +48,7 @@ export default function TabLayout() {
         options={{
           title: 'Chats',
           tabBarIcon: ({ color }: { color: string }) => (
-            <MaterialIcons size={28} name="chat-bubble" color={color} />
+            <MaterialIcons size={28} name="wechat" color={color} />
           ),
         }}
       />
