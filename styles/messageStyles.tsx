@@ -120,7 +120,7 @@ export default StyleSheet.create({
         borderRadius: 20,
         backgroundColor: "#f0f0f0",
         marginHorizontal: 10,
-        minHeight: 40, // Minimum height for the input
+        minHeight: 40,
         textAlignVertical: "top",
     },
     loadingContainer: {
@@ -146,4 +146,17 @@ export default StyleSheet.create({
         padding: 10,
         elevation: 5,
     },
+    noConversationContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+    },
+
+    noConversationText: {
+        fontSize: 16,
+        color: "#888",
+        textAlign: "center",
+    },
+
 });
