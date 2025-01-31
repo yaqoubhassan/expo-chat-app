@@ -1,22 +1,21 @@
-import { format, isToday, isYesterday, subDays } from "date-fns";
+import { format, isToday, isYesterday, subDays, parseISO } from "date-fns";
 import { Message } from "@/types/Message";
 
 const getDateLabel = (date: string | Date) => {
-    const parsedDate = new Date(date);
+    const parsedDate = typeof date === "string" ? parseISO(date) : new Date(date);
+    const today = new Date(); // Get current local time
 
+    // Ensure today, yesterday, and other calculations use consistent local time
     if (isToday(parsedDate)) return "Today";
     if (isYesterday(parsedDate)) return "Yesterday";
 
-    const daysAgoLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const today = new Date();
-
     for (let i = 2; i <= 7; i++) {
         if (parsedDate.toDateString() === subDays(today, i).toDateString()) {
-            return daysAgoLabels[parsedDate.getDay()];
+            return format(parsedDate, "EEEE"); // Returns full day name (e.g., "Thursday")
         }
     }
 
-    return format(parsedDate, "EEE MMM dd, yyyy");
+    return format(parsedDate, "EEE MMM dd, yyyy"); // Fallback full date format
 };
 
 export const groupMessagesByDate = (messages: Message[]) => {
