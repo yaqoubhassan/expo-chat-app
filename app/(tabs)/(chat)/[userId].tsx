@@ -58,7 +58,6 @@ export default function MessageScreen() {
 
     useFocusEffect(
         React.useCallback(() => {
-            console.log("userId is: ", userId)
             fetchMessages();
         }, [currentPage])
     );
@@ -217,7 +216,12 @@ export default function MessageScreen() {
                 }));
                 setMessages((prevMessages) => [...prevMessages, ...formattedMessages]); // Prepend older messages
                 setHasMore(data.hasMore);
-            } else {
+            }
+            else if (data.message === "No conversation found") {
+                setMessages([]); // Set messages to empty
+            }
+
+            else {
                 console.error("Failed to fetch messages");
             }
         } catch (error) {
@@ -241,7 +245,7 @@ export default function MessageScreen() {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    receiverId: receiverId,
+                    receiverId: userId,
                     content: input,
                 }),
             });
@@ -279,10 +283,6 @@ export default function MessageScreen() {
         </View>
     );
 
-    const renderMessage = ({ item }: { item: Message }) => {
-        return <MessageItem message={item} />;
-    };
-
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
@@ -303,31 +303,38 @@ export default function MessageScreen() {
                     activeStatus="Active 3m ago"
                 />
 
-                {/* Messages */}
-                <FlatList
-                    ListHeaderComponent={
-                        loadingMore ? (
-                            <ActivityIndicator size="small" color={Colors.light.tint} />
-                        ) : null
-                    }
-                    ref={flatListRef}
-                    data={groupedMessages}
-                    keyExtractor={(item, index) => `group-${index}`}
-                    renderItem={renderGroup}
-                    contentContainerStyle={styles.messageList}
-                    onViewableItemsChanged={handleViewableItemsChanged}
-                    viewabilityConfig={viewabilityConfig}
-                    onEndReachedThreshold={0.1}
-                    onEndReached={() => {
-                        if (!loadingMore && hasMore) {
-                            setCurrentPage((prevPage) => {
-                                const nextPage = prevPage + 1;
-                                fetchMessages(nextPage);
-                                return nextPage;
-                            });
+                {messages.length === 0 ? (
+                    <View style={styles.noConversationContainer}>
+                        <Text style={styles.noConversationText}>
+                            No messages yet. Start the conversation!
+                        </Text>
+                    </View>
+                ) : (
+                    <FlatList
+                        ListHeaderComponent={
+                            loadingMore ? (
+                                <ActivityIndicator size="small" color={Colors.light.tint} />
+                            ) : null
                         }
-                    }}
-                />
+                        ref={flatListRef}
+                        data={groupedMessages}
+                        keyExtractor={(item, index) => `group-${index}`}
+                        renderItem={renderGroup}
+                        contentContainerStyle={styles.messageList}
+                        onViewableItemsChanged={handleViewableItemsChanged}
+                        viewabilityConfig={viewabilityConfig}
+                        onEndReachedThreshold={0.1}
+                        onEndReached={() => {
+                            if (!loadingMore && hasMore) {
+                                setCurrentPage((prevPage) => {
+                                    const nextPage = prevPage + 1;
+                                    fetchMessages(nextPage);
+                                    return nextPage;
+                                });
+                            }
+                        }}
+                    />
+                )}
 
 
                 {isOtherUserTyping && (
