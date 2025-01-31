@@ -2,14 +2,20 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { User } from "@/types/User"; // Adjust the path if necessary
+import { useRouter } from "expo-router";
 
 interface UserItemProps {
     item: User;
 }
 
 const UserItem: React.FC<UserItemProps> = ({ item }) => {
+    // console.log("item: ", item)
+    const router = useRouter();
     return (
-        <TouchableOpacity style={styles.userItem}>
+        <TouchableOpacity style={styles.userItem} onPress={() => router.push({
+            pathname: `/(tabs)/(chat)/[userId]`,
+            params: { userId: item._id, name: item.name, avatar: item.avatar, receiverId: item._id }
+        })}>
             <View style={styles.avatarContainer}>
                 <Image source={{ uri: item.avatar }} style={styles.avatar} />
                 {item.isActive && <View style={styles.activeIndicator} />}

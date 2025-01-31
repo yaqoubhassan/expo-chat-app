@@ -54,6 +54,7 @@ export default function PeopleScreen() {
     getUsers(page);
   }, [page]);
 
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>

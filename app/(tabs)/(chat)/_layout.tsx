@@ -5,7 +5,7 @@ export default function ProfileLayout() {
     return (
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="[chatId]" options={{
+            <Stack.Screen name="[userId]" options={{
                 title: "Post Details",
                 headerStyle: { backgroundColor: "#6B46C1" },
                 headerTintColor: "#fff",

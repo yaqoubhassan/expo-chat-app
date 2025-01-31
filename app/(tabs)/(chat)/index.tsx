@@ -188,8 +188,8 @@ export default function ChatsScreen() {
 
     return (
       <TouchableOpacity style={styles.chatItem} onPress={() => router.push({
-        pathname: `/[chatId]`,
-        params: { chatId: item.id, name: item.name, avatar: item.avatar, email: item.email, receiverId: item.receiverId }
+        pathname: `/[userId]`,
+        params: { userId: item.receiverId, name: item.name, avatar: item.avatar, email: item.email }
       })}>
         <View style={styles.avatarContainer}>
           <Image

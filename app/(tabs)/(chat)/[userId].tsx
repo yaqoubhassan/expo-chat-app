@@ -33,7 +33,7 @@ export default function MessageScreen() {
     const [isTyping, setIsTyping] = useState(false);
     const router = useRouter();
     const { profile } = useProfile();
-    const { chatId, name, avatar, receiverId, email } = useLocalSearchParams();
+    const { userId, name, avatar, receiverId, email } = useLocalSearchParams();
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [inputHeight, setInputHeight] = useState(40);
@@ -58,6 +58,7 @@ export default function MessageScreen() {
 
     useFocusEffect(
         React.useCallback(() => {
+            console.log("userId is: ", userId)
             fetchMessages();
         }, [currentPage])
     );
@@ -195,7 +196,7 @@ export default function MessageScreen() {
             }
 
             const response = await fetch(
-                `${BASE_URL}/conversations/${chatId}/messages?page=${page}&limit=20`,
+                `${BASE_URL}/conversations/${userId}/messages?page=${page}&limit=20`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
