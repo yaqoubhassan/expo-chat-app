@@ -45,6 +45,8 @@ export default function MessageScreen() {
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(true); // Track if there are more messages
     const [loadingMore, setLoadingMore] = useState(false);
+    const [activeStatus, setActiveStatus] = useState<string>("");
+    const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
     const safeName = Array.isArray(name) ? name[0] : name || "Unknown User";
     const safeAvatar = Array.isArray(avatar) ? avatar[0] : avatar || "default-avatar-url";
@@ -115,6 +117,35 @@ export default function MessageScreen() {
     const viewabilityConfig = {
         itemVisiblePercentThreshold: 50,
     };
+
+    useEffect(() => {
+        const setupSocket = async () => {
+            // const token = await SecureStore.getItemAsync("authToken");
+            const newSocket = io("http://192.168.1.163:3000", {
+                transports: ["websocket"],
+                query: { userId: profile?.id }, // Replace dynamically
+            });
+            newSocket.on("userStatusChange", (onlineUserIds) => {
+                setOnlineUsers(onlineUserIds);
+            });
+            setSocket(newSocket);
+            return () => newSocket.disconnect();
+        };
+        setupSocket();
+    }, []);
+
+    const formatLastSeen = (timestamp: string | number | Date): string => {
+        const lastSeenDate = new Date(timestamp);
+        const now = new Date();
+        const diffMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
+
+        if (diffMinutes < 1) return "Online";
+        if (diffMinutes < 60) return `Active ${diffMinutes}m ago`;
+        if (diffMinutes < 1440) return `Active ${Math.floor(diffMinutes / 60)}h ago`;
+
+        return `Active ${lastSeenDate.toLocaleDateString()}`;
+    };
+
 
     const handleTyping = (text: string) => {
         setInput(text);
@@ -222,6 +253,10 @@ export default function MessageScreen() {
                 }));
                 setMessages((prevMessages) => [...prevMessages, ...formattedMessages]); // Prepend older messages
                 setHasMore(data.hasMore);
+
+                if (data.activeStatus) {
+                    setActiveStatus(formatLastSeen(data.activeStatus)); // Convert timestamp
+                }
             }
             else if (data.message === "No conversation found") {
                 setMessages([]); // Set messages to empty
@@ -306,7 +341,7 @@ export default function MessageScreen() {
                     onBackPress={() => router.back()}
                     name={safeName}
                     avatar={safeAvatar}
-                    activeStatus="Active 3m ago"
+                    activeStatus={activeStatus}
                 />
 
                 {messages.length === 0 ? (
