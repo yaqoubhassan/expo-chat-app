@@ -51,6 +51,7 @@ export default function ChatsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [socket, setSocket] = useState<any>(null);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
   const fetchConversations = useCallback(async (pageNumber = 1, reset = false) => {
     let isMounted = true;
@@ -105,10 +106,31 @@ export default function ChatsScreen() {
   }, [profile?.email]);
 
   useFocusEffect(
+
     React.useCallback(() => {
+      // console.log("I am fetching profile from here: ", profile)
       fetchConversations(page, true);
     }, [page, fetchConversations])
   );
+
+  // useEffect(() => {
+  //   console.log("profile: ", profile)
+  //   const setupSocket = async () => {
+  //     // const token = await SecureStore.getItemAsync('authToken');
+  //     // if (!token) return;
+
+  //     const newSocket = io("http://192.168.1.163:3000", {
+  //       transports: ["websocket"],
+  //       query: { userId: profile?.id }, // Replace dynamically
+  //     });
+  //     newSocket.on("userStatusChange", (onlineUserIds) => {
+  //       setOnlineUsers(onlineUserIds);
+  //     });
+  //     setSocket(newSocket);
+  //     return () => newSocket.disconnect();
+  //   };
+  //   setupSocket();
+  // }, []);
 
   useEffect(() => {
     let socketInstance: any = null;
