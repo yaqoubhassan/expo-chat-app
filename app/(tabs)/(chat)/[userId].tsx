@@ -80,10 +80,14 @@ export default function MessageScreen() {
             });
 
             // Notify sender about read status
-            socket.emit("messageRead", {
-                messageId,
-                receiverId: profile?.id,
-            });
+            if (socket) {
+                socket.emit("messageRead", {
+                    messageId,
+                    receiverId: profile?.id,
+                });
+            } else {
+                console.warn("Socket is not connected when trying to emit messageRead");
+            }
         } catch (error) {
             console.error("Error marking message as read:", error);
         }
@@ -94,14 +98,16 @@ export default function MessageScreen() {
             (item: any) => item.index === messages.length - 1
         );
         setShowScrollToBottom(!isAtBottom);
-        viewableItems.forEach((item: any) => {
-            if (item.item.type === "received" && !item.item.read) {
-                markAsRead(item.item.id);
-                setMessages((prev) =>
-                    prev.map((msg) =>
-                        msg.id === item.item.id ? { ...msg, read: true } : msg
-                    )
-                );
+        viewableItems.forEach((group: any) => {
+            if (group.item.messages) {
+                group.item.messages.forEach((msg: Message) => {
+                    if (msg.type === "received" && !msg.read) {
+                        markAsRead(msg.id);
+                        setMessages((prev) =>
+                            prev.map((m) => (m.id === msg.id ? { ...m, read: true } : m))
+                        );
+                    }
+                });
             }
         });
     };
@@ -245,7 +251,7 @@ export default function MessageScreen() {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    receiverId: userId,
+                    receiverId: receiverId,
                     content: input,
                 }),
             });
