@@ -14,6 +14,8 @@ import UserItem from "@/components/UserItem";
 import { User } from "@/types/User"; // Adjust the path
 import { Colors } from "@/constants/Colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useProfile } from "@/context/ProfileContext";
+import io, { Socket } from "socket.io-client";
 
 export default function PeopleScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -21,6 +23,27 @@ export default function PeopleScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const { profile } = useProfile();
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    const setupSocket = async () => {
+      // const token = await SecureStore.getItemAsync("authToken");
+      const newSocket = io("http://192.168.1.163:3000", {
+        transports: ["websocket"],
+        query: { userId: profile?.id }, // Replace dynamically
+      });
+      newSocket.on("userStatusChange", (onlineUserIds) => {
+        setOnlineUsers(onlineUserIds);
+      });
+      setSocket(newSocket);
+      return () => newSocket.disconnect();
+    };
+    setupSocket();
+  }, []);
+
+  const isUserOnline = (userId: string) => onlineUsers.includes(userId);
 
   const getUsers = async (pageNumber = 1, refreshing = false) => {
     if (!refreshing) setIsLoading(true);
@@ -68,7 +91,7 @@ export default function PeopleScreen() {
       <FlatList
         data={users}
         keyExtractor={(item, index) => item.id || `user-${index}`}
-        renderItem={({ item }) => <UserItem item={item} />}
+        renderItem={({ item }) => <UserItem item={item} isOnline={isUserOnline(item._id)} />}
         onEndReached={loadMoreUsers}
         onEndReachedThreshold={0.5}
         refreshing={isRefreshing}
