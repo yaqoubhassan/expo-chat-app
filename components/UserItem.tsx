@@ -6,10 +6,11 @@ import { useRouter } from "expo-router";
 
 interface UserItemProps {
     item: User;
+    isOnline: boolean;
 }
 
-const UserItem: React.FC<UserItemProps> = ({ item }) => {
-    // console.log("item: ", item)
+const UserItem: React.FC<UserItemProps> = ({ item, isOnline }) => {
+
     const router = useRouter();
     return (
         <TouchableOpacity style={styles.userItem} onPress={() => router.push({
@@ -18,7 +19,7 @@ const UserItem: React.FC<UserItemProps> = ({ item }) => {
         })}>
             <View style={styles.avatarContainer}>
                 <Image source={{ uri: item.avatar }} style={styles.avatar} />
-                {item.isActive && <View style={styles.activeIndicator} />}
+                {isOnline && <View style={styles.activeIndicator} />}
             </View>
             <View style={styles.userDetails}>
                 <Text style={styles.userName}>{item.name}</Text>
