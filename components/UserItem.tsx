@@ -51,10 +51,10 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     activeIndicator: {
-        width: 10,
-        height: 10,
+        width: 15,
+        height: 15,
         backgroundColor: "#32CD32",
-        borderRadius: 5,
+        borderRadius: 10,
         position: "absolute",
         bottom: 2,
         right: 2,
