@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     View,
     Text,
@@ -315,14 +315,24 @@ export default function MessageScreen() {
 
     const groupedMessages = groupMessagesByDate(messages);
 
-    const renderGroup = ({ item }: { item: any }) => (
+    // const renderGroup = ({ item }: { item: any }) => (
+    //     <View>
+    //         <Text style={styles.dateHeader}>{item.label}</Text>
+    //         {item.messages.map((msg: Message, index: number) => (
+    //             <MessageItem key={msg.id || index} message={msg} />
+    //         ))}
+    //     </View>
+    // );
+
+    const renderGroup = useCallback(({ item }: { item: any }) => (
         <View>
             <Text style={styles.dateHeader}>{item.label}</Text>
             {item.messages.map((msg: Message, index: number) => (
                 <MessageItem key={msg.id || index} message={msg} />
             ))}
         </View>
-    );
+    ), []);
+
 
     if (isLoading) {
         return (
@@ -374,6 +384,13 @@ export default function MessageScreen() {
                                 });
                             }
                         }}
+                        initialNumToRender={5}
+                        windowSize={3}
+                        getItemLayout={(data, index) => ({
+                            length: 80, // Approximate row height
+                            offset: 80 * index,
+                            index,
+                        })}
                     />
                 )}
 

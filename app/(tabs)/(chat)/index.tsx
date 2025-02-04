@@ -15,11 +15,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Colors } from '@/constants/Colors';
 import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '@env';
-import { useProfile } from '@/context/ProfileContext';
+// import { useProfile } from '@/context/ProfileContext';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import io from "socket.io-client";
+import { usePathname } from 'expo-router';
+import { useProfile } from "@/context/ProfileContext";
 
 type Participant = {
   _id: string;
@@ -42,7 +44,9 @@ type ChatItem = {
 
 export default function ChatsScreen() {
   const router = useRouter();
-  const { profile } = useProfile();
+  // const { profile } = useProfile();
+  // const [profile, setProfile] = useState<Profile>();
+  const { profile, fetchProfile } = useProfile();
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -53,7 +57,18 @@ export default function ChatsScreen() {
   const [socket, setSocket] = useState<any>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
+
   const fetchConversations = useCallback(async (pageNumber = 1, reset = false) => {
+    if (!profile) {
+      console.log('Profile not loaded yet, skipping conversation fetch');
+      return;
+    }
+
     let isMounted = true;
     try {
       setLoading(true);
@@ -106,33 +121,36 @@ export default function ChatsScreen() {
   }, [profile?.email]);
 
   useFocusEffect(
-
     React.useCallback(() => {
-      // console.log("I am fetching profile from here: ", profile)
-      fetchConversations(page, true);
-    }, [page, fetchConversations])
+      if (profile) {
+        fetchConversations(page, true);
+      }
+    }, [profile, page, fetchConversations])
   );
 
-  // useEffect(() => {
-  //   console.log("profile: ", profile)
-  //   const setupSocket = async () => {
-  //     // const token = await SecureStore.getItemAsync('authToken');
-  //     // if (!token) return;
+  useEffect(() => {
+    if (!profile) {
+      console.log('Profile not loaded yet, skipping userStatusChange fetch');
+      return;
+    }
+    const setupSocket = async () => {
 
-  //     const newSocket = io("http://192.168.1.163:3000", {
-  //       transports: ["websocket"],
-  //       query: { userId: profile?.id }, // Replace dynamically
-  //     });
-  //     newSocket.on("userStatusChange", (onlineUserIds) => {
-  //       setOnlineUsers(onlineUserIds);
-  //     });
-  //     setSocket(newSocket);
-  //     return () => newSocket.disconnect();
-  //   };
-  //   setupSocket();
-  // }, []);
+      const newSocket = io("http://192.168.1.163:3000", {
+        transports: ["websocket"],
+        query: { userId: profile?.id }, // Replace dynamically
+      });
+      newSocket.on("userStatusChange", (onlineUserIds) => {
+        setOnlineUsers(onlineUserIds);
+      });
+      setSocket(newSocket);
+      return () => newSocket.disconnect();
+    };
+    setupSocket();
+  }, []);
 
   useEffect(() => {
+    if (!profile?.id) return;
+
     let socketInstance: any = null;
 
     const setupSocket = async () => {
@@ -198,6 +216,7 @@ export default function ChatsScreen() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    fetchProfile();
     setPage(1);
     fetchConversations(1, true);
   };
@@ -229,6 +248,16 @@ export default function ChatsScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (!profile) {
+    // Show a loading indicator if the profile hasn't loaded yet
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#32CD32" />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -411,5 +440,14 @@ const styles = StyleSheet.create({
     color: '#888888',
     marginBottom: 10,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
   },
 });

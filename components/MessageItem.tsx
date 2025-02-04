@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Message } from "@/types/Message";
@@ -147,4 +147,9 @@ const styles = StyleSheet.create({
 
 });
 
-export default MessageItem;
+// export default memo(MessageItem);
+
+export default memo(MessageItem, (prevProps, nextProps) => {
+    return prevProps.message.id === nextProps.message.id &&
+        prevProps.message.read === nextProps.message.read;
+});

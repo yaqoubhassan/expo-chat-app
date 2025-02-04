@@ -21,7 +21,7 @@
     "@react-navigation/native-stack": "^7.2.0",
     "chat-app": "file:",
     "date-fns": "^4.1.0",
-    "expo": "^52.0.28",
+    "expo": "^52.0.29",
     "expo-blur": "^14.0.3",
     "expo-constants": "^17.0.5",
     "expo-font": "~13.0.3",

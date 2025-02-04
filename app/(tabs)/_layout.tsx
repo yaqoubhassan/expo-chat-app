@@ -9,7 +9,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 export default function TabLayout() {
   const pathname = usePathname();
 
-  const staticPaths = ['/chats', '/people', '/profile'];
+  const staticPaths = ['/undefined', '/', '/chats', '/people', '/profile'];
 
   // Determine if the current path is dynamic
   const isDynamicPath = !staticPaths.includes(pathname) && /^\/[a-zA-Z0-9]+$/.test(pathname);

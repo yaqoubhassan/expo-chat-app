@@ -70,7 +70,7 @@ export default function LoginScreen() {
                     text1: "Success",
                     text2: "Login successful!",
                 });
-                router.push("/"); // Navigate to the home screen
+                router.push("/(chat)"); // Navigate to the home screen
             } else {
                 if (data.message.includes("Please verify your email")) {
                     // If the user is not verified, redirect to the email verification screen
