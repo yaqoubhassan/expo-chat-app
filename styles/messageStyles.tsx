@@ -158,5 +158,9 @@ export default StyleSheet.create({
         color: "#888",
         textAlign: "center",
     },
+    typingText: {
+        fontStyle: 'italic',
+        color: '#32CD32', // Using the app's tint color
+    },
 
 });
