@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,16 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Colors } from '@/constants/Colors';
 import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '@env';
-// import { useProfile } from '@/context/ProfileContext';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import io from "socket.io-client";
-import { usePathname } from 'expo-router';
 import { useProfile } from "@/context/ProfileContext";
+import { TypingContext } from '@/context/TypingContext';
+
+interface TypingEvent {
+  senderId: string; // Adjust type based on your actual data
+}
 
 type Participant = {
   _id: string;
@@ -43,10 +46,9 @@ type ChatItem = {
 };
 
 export default function ChatsScreen() {
+  const { typingUser, setTypingUser } = useContext(TypingContext);
   const router = useRouter();
-  // const { profile } = useProfile();
-  // const [profile, setProfile] = useState<Profile>();
-  const { profile, fetchProfile } = useProfile();
+  const { profile, fetchProfile, isLoading: profileLoading } = useProfile();
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -57,10 +59,23 @@ export default function ChatsScreen() {
   const [socket, setSocket] = useState<any>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
+  // Replace your current useFocusEffect hooks with this single one
   useFocusEffect(
-    React.useCallback(() => {
-      fetchProfile();
-    }, [])
+    useCallback(() => {
+      // Only fetch profile if it's not already loaded
+      if (!profile || !profile.id) {
+        fetchProfile().then(() => {
+          fetchConversations(1, true);
+        });
+      } else {
+        // If profile is already loaded, fetch conversations directly
+        fetchConversations(1, true);
+      }
+
+      return () => {
+        // Cleanup when screen loses focus
+      };
+    }, []) // Empty dependency array to run only on focus changes
   );
 
   const fetchConversations = useCallback(async (pageNumber = 1, reset = false) => {
@@ -82,6 +97,11 @@ export default function ChatsScreen() {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -98,114 +118,157 @@ export default function ChatsScreen() {
             avatar: otherParticipant?.avatar || 'https://example.com/default-avatar.png',
             lastMessage: conversation.lastMessage,
             lastMessageAt: conversation.lastMessageAt,
-            isActive: false, // Set this based on real-time activity if applicable
+            isActive: onlineUsers.includes(otherParticipant?._id), // Use online status
+            participants: conversation.participants || [],
           };
         });
 
-        setChats((prevChats) => (reset ? mappedChats : [...prevChats, ...mappedChats]));
-        setTotalPages(data.meta.totalPages);
+        if (isMounted) {
+          setChats((prevChats) => (reset ? mappedChats : [...prevChats, ...mappedChats]));
+          setTotalPages(data.meta.totalPages);
+        }
       } else {
         console.error(data.message);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
-      if (isMounted) {
-        setLoading(false);
-        setIsRefreshing(false);
-      }
+      setLoading(false);
+      setIsRefreshing(false);
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [profile?.email]);
+  }, [profile, onlineUsers]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      if (profile) {
-        fetchConversations(page, true);
-      }
-    }, [profile, page, fetchConversations])
-  );
-
+  // Handle pagination
   useEffect(() => {
-    if (!profile) {
-      console.log('Profile not loaded yet, skipping userStatusChange fetch');
+    if (profile && page > 1) {
+      fetchConversations(page, false);
+    }
+  }, [page, profile, fetchConversations]);
+
+  // Setup socket connection when profile is available
+  useEffect(() => {
+    if (!profile?.id) {
+      console.log('Profile ID not available, skipping socket setup');
       return;
     }
-    const setupSocket = async () => {
-
-      const newSocket = io("http://192.168.1.163:3000", {
-        transports: ["websocket"],
-        query: { userId: profile?.id }, // Replace dynamically
-      });
-      newSocket.on("userStatusChange", (onlineUserIds) => {
-        setOnlineUsers(onlineUserIds);
-      });
-      setSocket(newSocket);
-      return () => newSocket.disconnect();
-    };
-    setupSocket();
-  }, []);
-
-  useEffect(() => {
-    if (!profile?.id) return;
 
     let socketInstance: any = null;
 
     const setupSocket = async () => {
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) return;
+      try {
+        const token = await SecureStore.getItemAsync('authToken');
+        if (!token) {
+          console.error('No auth token for socket connection');
+          return;
+        }
 
-      socketInstance = io("http://192.168.1.163:3000", {
-        transports: ['websocket'],
-        query: { token },
-      });
+        // Close existing socket if any
+        if (socket) {
+          socket.disconnect();
+        }
 
-      setSocket(socketInstance);
-
-      socketInstance.emit('joinRoom', profile?.id);
-
-      socketInstance.off('message'); // ✅ Prevent duplicate listeners
-      socketInstance.on('message', (updatedChat: any) => {
-        const formattedChat: ChatItem = {
-          id: updatedChat.conversationId,
-          receiverId: updatedChat.receiver,
-          name: updatedChat.senderName,
-          email: updatedChat.senderEmail,
-          lastMessage: updatedChat.content,
-          lastMessageAt: updatedChat.createdAt,
-          participants: [updatedChat.sender, updatedChat.receiver],
-          avatar: updatedChat.senderAvatar,
-          isActive: false,
-        };
-
-        setChats((prevChats) => {
-          // Ensure we update existing chats instead of duplicating them
-          const existingChatIndex = prevChats.findIndex((chat) => chat.id === formattedChat.id);
-          if (existingChatIndex !== -1) {
-            const updatedChats = [...prevChats];
-            updatedChats[existingChatIndex] = formattedChat;
-            return updatedChats;
-          }
-          return [...prevChats, formattedChat];
+        socketInstance = io("http://192.168.1.163:3000", {
+          transports: ['websocket'],
+          query: { token, userId: profile.id },
         });
-      });
+
+        socketInstance.on('connect', () => {
+          console.log('Socket connected');
+          socketInstance.emit('joinRoom', profile.id);
+        });
+
+        socketInstance.on('connect_error', (error: any) => {
+          console.error('Socket connection error:', error);
+        });
+
+        // Handle online users updates
+        socketInstance.on('userStatusChange', (onlineUserIds: string[]) => {
+          console.log('Online users updated:', onlineUserIds);
+          setOnlineUsers(onlineUserIds);
+
+          // Update chat items with active status
+          setChats(prevChats =>
+            prevChats.map(chat => ({
+              ...chat,
+              isActive: onlineUserIds.includes(chat.receiverId)
+            }))
+          );
+        });
+
+        socketInstance.on('typing', ({ senderId }: TypingEvent) => {
+
+          // Update the typing context to show the typing indicator
+          if (senderId !== profile.id) {
+            // Only show typing indicator for other users, not the current user
+            setTypingUser(senderId);
+          }
+        });
+
+        socketInstance.on('stopTyping', ({ senderId }: TypingEvent) => {
+
+          // Clear the typing indicator when the user stops typing
+          if (senderId !== profile.id) {
+            setTypingUser(null);
+          }
+        });
+
+        // Handle new messages
+        socketInstance.on('message', (updatedChat: any) => {
+
+          const formattedChat: ChatItem = {
+            id: updatedChat.conversationId,
+            receiverId: updatedChat.sender === profile.id ? updatedChat.receiver : updatedChat.sender,
+            name: updatedChat.senderName,
+            email: updatedChat.senderEmail,
+            lastMessage: updatedChat.content,
+            lastMessageAt: updatedChat.createdAt,
+            participants: [updatedChat.sender, updatedChat.receiver],
+            avatar: updatedChat.senderAvatar,
+            isActive: onlineUsers.includes(updatedChat.sender),
+          };
+
+          setChats((prevChats) => {
+            // Move updated chat to top if it exists, or add it
+            const existingChatIndex = prevChats.findIndex(
+              (chat) => chat.id === formattedChat.id
+            );
+
+            const updatedChats = [...prevChats];
+
+            if (existingChatIndex !== -1) {
+              // Remove existing chat
+              updatedChats.splice(existingChatIndex, 1);
+            }
+
+            // Add updated chat to the top
+            return [formattedChat, ...updatedChats];
+          });
+        });
+
+        setSocket(socketInstance);
+      } catch (error) {
+        console.error('Error setting up socket:', error);
+      }
     };
 
     setupSocket();
 
+    // Cleanup function to disconnect socket when unmounting
     return () => {
       if (socketInstance) {
         socketInstance.off('message');
+        socketInstance.off('userStatusChange');
+        socketInstance.off('connect');
+        socketInstance.off('connect_error');
         socketInstance.disconnect();
       }
     };
-  }, [profile?.id]);
-
+  }, [profile?.id]); // Only recreate socket when profile.id changes
 
   const handleSearch = (text: string) => {
     setSearchText(text);
+    // Filter chats based on search text
+    // You could implement this functionality if needed
   };
 
   const handleLoadMore = () => {
@@ -222,35 +285,58 @@ export default function ChatsScreen() {
   };
 
   const renderChatItem = ({ item }: { item: ChatItem }) => {
+    const formattedTime = item.lastMessageAt
+      ? formatDistanceToNow(parseISO(item.lastMessageAt), { addSuffix: true })
+      : 'N/A';
 
-    const formattedTime = formatDistanceToNow(parseISO(item.lastMessageAt), {
-      addSuffix: true,
-    });
+    // Find the other participant (the one who is not the current user)
+    const otherParticipant = item.participants.find(
+      (participant) => participant._id !== profile?.id
+    );
+
+    // Check if the other participant is typing
+    const isTyping = typingUser === otherParticipant?._id;
 
     return (
-      <TouchableOpacity style={styles.chatItem} onPress={() => router.push({
-        pathname: `/[userId]`,
-        params: { userId: item.receiverId, name: item.name, avatar: item.avatar, email: item.email, receiverId: item.receiverId }
-      })}>
+      <TouchableOpacity
+        style={styles.chatItem}
+        onPress={() => router.push({
+          pathname: `/[userId]`,
+          params: {
+            userId: item.receiverId,
+            name: item.name,
+            avatar: item.avatar,
+            email: item.email,
+            receiverId: item.receiverId
+          }
+        })}
+      >
         <View style={styles.avatarContainer}>
           <Image
             source={{ uri: item.avatar || 'https://example.com/default-avatar.png' }}
             style={styles.avatar}
           />
+          {item.isActive && <View style={styles.activeIndicator} />}
         </View>
         <View style={styles.chatDetails}>
           <Text style={styles.chatName}>{item.name || 'Unknown User'}</Text>
-          <Text style={styles.chatMessage} numberOfLines={1}>
-            {item.lastMessage || 'No messages yet'}
-          </Text>
+          {isTyping ? (
+            <Text style={[styles.chatMessage, styles.typingText]}>
+              Typing...
+            </Text>
+          ) : (
+            <Text style={styles.chatMessage} numberOfLines={1}>
+              {item.lastMessage || 'No messages yet'}
+            </Text>
+          )}
         </View>
-        <Text style={styles.chatTimestamp}>{formattedTime || 'N/A'}</Text>
+        <Text style={styles.chatTimestamp}>{formattedTime}</Text>
       </TouchableOpacity>
     );
   };
 
-  if (!profile) {
-    // Show a loading indicator if the profile hasn't loaded yet
+  if (profileLoading) {
+    // Show a loading indicator if the profile is still loading
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#32CD32" />
@@ -287,12 +373,12 @@ export default function ChatsScreen() {
           </View>
         )}
       </View>
+
       {loading && page === 1 ? (
         <ActivityIndicator size="large" color={Colors.light.tint} style={{ marginTop: 20 }} />
       ) : (
         <FlatList
           data={chats}
-          // keyExtractor={(item, index) => item.id || index.toString()}
           keyExtractor={(item) => item.id || Math.random().toString()}
           renderItem={renderChatItem}
           contentContainerStyle={[
@@ -318,7 +404,15 @@ export default function ChatsScreen() {
           }
         />
       )}
-      <TouchableOpacity style={styles.fab}>
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => {
+          // Handle new chat creation
+          console.log("New chat button pressed");
+          // You could navigate to a contact list screen here
+        }}
+      >
         <MaterialIcons name="add" size={28} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
@@ -362,7 +456,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    // marginBottom: 10,
   },
   chatList: {
     paddingVertical: 10,
@@ -386,10 +479,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   activeIndicator: {
-    width: 10,
-    height: 10,
+    width: 15,
+    height: 15,
     backgroundColor: '#32CD32',
-    borderRadius: 5,
+    borderRadius: 10,
     position: 'absolute',
     bottom: 2,
     right: 2,
@@ -449,5 +542,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: "#666",
+  },
+  typingText: {
+    fontStyle: 'italic',
+    color: '#32CD32', // Using the app's tint color
   },
 });
