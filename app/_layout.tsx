@@ -12,6 +12,7 @@ import Toast, { ToastConfig, ToastConfigParams } from "react-native-toast-messag
 import { useColorScheme } from "@/hooks/useColorScheme";
 
 import { ProfileProvider } from "@/context/ProfileContext";
+import { TypingProvider } from "@/context/TypingContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -84,15 +85,17 @@ export default function RootLayout() {
 
   return (
     <ProfileProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <Toast config={toastConfig} />
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <TypingProvider>
+        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <Toast config={toastConfig} />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </TypingProvider>
     </ProfileProvider>
   );
 }
