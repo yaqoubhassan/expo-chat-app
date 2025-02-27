@@ -40,7 +40,6 @@ export const useSocket = (
         });
 
         socketInstance.on('connect', () => {
-          console.log('Socket connected');
           socketInstance.emit('joinRoom', profileId);
         });
 
@@ -50,7 +49,6 @@ export const useSocket = (
 
         // Handle online users updates
         socketInstance.on('userStatusChange', (onlineUserIds: string[]) => {
-          console.log('Online users updated:', onlineUserIds);
           setOnlineUsers(onlineUserIds);
         });
 

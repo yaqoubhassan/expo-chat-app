@@ -24,6 +24,7 @@ import styles from "@/styles/messageStyles";
 import { Message } from "@/types/Message";
 import { groupMessagesByDate } from "@/utils/groupeMessagesByDate";
 import { TypingContext } from '@/context/TypingContext';
+import TypingIndicator from '@/components/TypingIndicator';
 
 
 interface TypingEvent {
@@ -94,7 +95,6 @@ export default function MessageScreen() {
             });
 
             socketInstance.on("connect", () => {
-                console.log("Socket connected");
                 socketInstance.emit("joinRoom", profile?.id);
             });
 
@@ -117,7 +117,6 @@ export default function MessageScreen() {
             setSocket(socketInstance);
 
             return () => {
-                console.log("Cleaning up socket");
                 socketInstance.off("message", handleNewMessage);
                 socketInstance.off("messageRead", handleMessageRead);
                 socketInstance.off("typing", handleUserTyping);
@@ -449,7 +448,10 @@ export default function MessageScreen() {
 
 
                 {isOtherUserTyping && (
-                    <Text style={[styles.typingIndicator, styles.typingText]}>Typing...</Text>
+                    // <Text style={[styles.typingIndicator, styles.typingText]}>Typing...</Text>
+                    <View style={styles.typingIndicatorStyle}>
+                        <TypingIndicator />
+                    </View>
                 )}
 
                 {/* Scroll to Bottom Button */}

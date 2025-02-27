@@ -14,11 +14,6 @@ export default function TabLayout() {
   // Determine if the current path is dynamic
   const isDynamicPath = !staticPaths.includes(pathname) && /^\/[a-zA-Z0-9]+$/.test(pathname);
 
-  // useEffect(() => {
-  //   console.log('Current pathname:', pathname); // Log pathname for debugging
-  //   console.log('Is dynamic path:', isDynamicPath);
-  // }, [pathname]);
-
   return (
     <Tabs
       screenOptions={{

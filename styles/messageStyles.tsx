@@ -162,5 +162,8 @@ export default StyleSheet.create({
         fontStyle: 'italic',
         color: '#32CD32', // Using the app's tint color
     },
-
+    typingIndicatorStyle: {
+        marginLeft: 20,
+        marginBottom: 10
+    }
 });
