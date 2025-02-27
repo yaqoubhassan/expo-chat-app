@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Message } from "@/types/Message";
+import { Message } from "@/types/MessageTypes";
 
 interface MessageItemProps {
     message: Message;

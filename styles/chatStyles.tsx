@@ -138,5 +138,32 @@ export default StyleSheet.create({
         backgroundColor: '#32CD32',
         marginRight: 4,
     },
+    // Add these to your existing styles object in chatStyles.js
 
+    chatMetadata: {
+        alignItems: 'flex-end',
+        height: '100%',
+        paddingVertical: 8,
+    },
+
+    unreadBadge: {
+        backgroundColor: '#32CD32', // You can use Colors.light.tint here
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 5,
+    },
+
+    unreadText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+
+    unreadTimestamp: {
+        color: '#32CD32', // Green color for unread messages
+        fontWeight: '600', // Optional: make it slightly bolder
+    },
 });

@@ -15,6 +15,7 @@ export type ChatItemType = {
     participants: Participant[];
     avatar: string;
     isActive: boolean;
+    unreadCount: number;
 };
 
 export interface TypingEvent {

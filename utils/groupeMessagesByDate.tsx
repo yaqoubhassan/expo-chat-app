@@ -1,5 +1,5 @@
 import { format, isToday, isYesterday, subDays, parseISO } from "date-fns";
-import { Message } from "@/types/Message";
+import { Message } from "@/types/MessageTypes";
 
 const getDateLabel = (date: string | Date) => {
     const parsedDate = typeof date === "string" ? parseISO(date) : new Date(date);

@@ -52,6 +52,7 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
             lastMessageAt: conversation.lastMessageAt,
             isActive: onlineUsers.includes(otherParticipant?._id), // Use online status
             participants: conversation.participants || [],
+            unreadCount: conversation.unreadCount
           };
         });
 
@@ -97,6 +98,7 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
       email: updatedChat.senderEmail,
       lastMessage: updatedChat.content,
       lastMessageAt: updatedChat.createdAt,
+      unreadCount: updatedChat.unreadCount,
       participants: [updatedChat.sender, updatedChat.receiver],
       avatar: updatedChat.senderAvatar,
       isActive: onlineUsers.includes(updatedChat.sender),
@@ -129,6 +131,16 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
     );
   }, []);
 
+  const updateChatUnreadCount = useCallback((conversationId: string, newUnreadCount = 0) => {
+  setChats(prevChats => 
+    prevChats.map(chat => 
+      chat.id === conversationId 
+        ? { ...chat, unreadCount: newUnreadCount }
+        : chat
+    )
+  );
+}, []);
+
   return {
     chats,
     loading,
@@ -139,6 +151,7 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
     handleLoadMore,
     handleRefresh,
     updateChatsWithNewMessage,
-    updateChatsWithOnlineStatus
+    updateChatsWithOnlineStatus,
+    updateChatUnreadCount
   };
 };
