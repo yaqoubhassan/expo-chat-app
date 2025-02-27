@@ -52,27 +52,7 @@ export default function MessageScreen() {
     const safeName = Array.isArray(name) ? name[0] : name || "Unknown User";
     const safeAvatar = Array.isArray(avatar) ? avatar[0] : avatar || "default-avatar-url";
 
-    let typingTimeout: NodeJS.Timeout | undefined;
-
-    const scrollToBottom = () => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-        setShowScrollToBottom(false); // Hide the button after scrolling
-    };
-
-    useFocusEffect(
-        React.useCallback(() => {
-            fetchMessages();
-        }, [currentPage])
-    );
-
-    useFocusEffect(
-
-        React.useCallback(() => {
-            if (messages.length) {
-                scrollToBottom(); // Scroll to the bottom when a new message is added
-            }
-        }, [messages])
-    );
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const markAsRead = async (messageId: string) => {
         try {
@@ -100,6 +80,155 @@ export default function MessageScreen() {
         }
     };
 
+    useEffect(() => {
+        if (!profile?.id || !receiverId) return;
+
+        const setupSocket = async () => {
+            const token = await SecureStore.getItemAsync("authToken");
+            const socketInstance = io("http://192.168.1.163:3000", {
+                transports: ["websocket"],
+                query: {
+                    userId: profile?.id,
+                    token
+                },
+            });
+
+            socketInstance.on("connect", () => {
+                console.log("Socket connected");
+                socketInstance.emit("joinRoom", profile?.id);
+            });
+
+            socketInstance.on("userStatusChange", (onlineUserIds) => {
+                setOnlineUsers(onlineUserIds);
+                const isUserOnline = onlineUserIds.includes(receiverId);
+                if (isUserOnline) {
+                    setActiveStatus("Online");
+                }
+            });
+
+            // Set up message handlers
+            socketInstance.on("message", handleNewMessage);
+            socketInstance.on("messageRead", handleMessageRead);
+
+            // Set up typing handlers
+            socketInstance.on("typing", handleUserTyping);
+            socketInstance.on("stopTyping", handleUserStopTyping);
+
+            setSocket(socketInstance);
+
+            return () => {
+                console.log("Cleaning up socket");
+                socketInstance.off("message", handleNewMessage);
+                socketInstance.off("messageRead", handleMessageRead);
+                socketInstance.off("typing", handleUserTyping);
+                socketInstance.off("stopTyping", handleUserStopTyping);
+                socketInstance.disconnect();
+            };
+        };
+
+        setupSocket();
+    }, [profile?.id, receiverId]);
+
+    // 3. Define handler functions outside useEffect
+    const handleNewMessage = useCallback((newMessage: any) => {
+        const formattedMessage: Message = {
+            id: newMessage.id,
+            text: newMessage.content,
+            type: newMessage.sender === profile?.id ? "sent" : "received",
+            createdAt: newMessage.createdAt || Date.now(),
+            read: newMessage.read || false,
+        };
+
+        setMessages((prevMessages) => [...prevMessages, formattedMessage]);
+
+        if (newMessage.sender === receiverId && !formattedMessage.read) {
+            markAsRead(formattedMessage.id);
+        }
+
+        // Clear typing indicator when message received
+        if (newMessage.sender === receiverId) {
+            setIsOtherUserTyping(false);
+            setTypingUser(null);
+        }
+    }, [profile?.id, receiverId, markAsRead]);
+
+    const handleMessageRead = useCallback(({ messageId }: { messageId: string }) => {
+        setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+                msg.id === messageId ? { ...msg, read: true } : msg
+            )
+        );
+    }, []);
+
+    const handleUserTyping = useCallback(({ senderId }: TypingEvent) => {
+        if (senderId === receiverId) {
+            setIsOtherUserTyping(true);
+            setTypingUser(senderId);
+        }
+    }, [receiverId]);
+
+    const handleUserStopTyping = useCallback(({ senderId }: TypingEvent) => {
+        if (senderId === receiverId) {
+            setIsOtherUserTyping(false);
+            setTypingUser(null);
+        }
+    }, [receiverId]);
+
+    // 4. Improved handleTyping with ref for timeout
+    const handleTyping = (text: string) => {
+        setInput(text);
+
+        if (!isTyping && socket) {
+            setIsTyping(true);
+            setTypingUser(profile?.id);
+            socket.emit("typing", { senderId: profile?.id, receiverId });
+        }
+
+        // Clear previous timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        // Set new timeout
+        typingTimeoutRef.current = setTimeout(() => {
+            if (socket) {
+                setIsTyping(false);
+                setTypingUser(null);
+                socket.emit("stopTyping", { senderId: profile?.id, receiverId });
+            }
+            typingTimeoutRef.current = null;
+        }, 1000);
+    };
+
+    // 5. Clean up timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const scrollToBottom = () => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+        setShowScrollToBottom(false); // Hide the button after scrolling
+    };
+
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchMessages();
+        }, [currentPage])
+    );
+
+    useFocusEffect(
+
+        React.useCallback(() => {
+            if (messages.length) {
+                scrollToBottom(); // Scroll to the bottom when a new message is added
+            }
+        }, [messages])
+    );
+
     const handleViewableItemsChanged = ({ viewableItems }: any) => {
         const isAtBottom = viewableItems.some(
             (item: any) => item.index === messages.length - 1
@@ -123,24 +252,7 @@ export default function MessageScreen() {
         itemVisiblePercentThreshold: 50,
     };
 
-    useEffect(() => {
-        const setupSocket = async () => {
-            const newSocket = io("http://192.168.1.163:3000", {
-                transports: ["websocket"],
-                query: { userId: profile?.id }, // Replace dynamically
-            });
-            newSocket.on("userStatusChange", (onlineUserIds) => {
-                setOnlineUsers(onlineUserIds);
-                const isUserOnline = onlineUserIds.includes(receiverId);
-                if (isUserOnline) {
-                    setActiveStatus("Online");
-                }
-            });
-            setSocket(newSocket);
-            return () => newSocket.disconnect();
-        };
-        setupSocket();
-    }, []);
+
 
     const formatLastSeen = (timestamp: string | number | Date): string => {
         const lastSeenDate = new Date(timestamp);
@@ -155,90 +267,11 @@ export default function MessageScreen() {
         return `Active ${lastSeenDate.toLocaleDateString()}`;
     };
 
-    const handleTyping = (text: string) => {
-        setInput(text);
 
-        if (!isTyping) {
-            setIsTyping(true);
-            setTypingUser(profile?.id);
-            socket.emit("typing", { senderId: profile?.id, receiverId });
-        }
 
-        clearTimeout(typingTimeout);
 
-        typingTimeout = setTimeout(() => {
-            setIsTyping(false);
-            setTypingUser(null);
-            socket.emit("stopTyping", { senderId: profile?.id, receiverId });
-        }, 1000);
-    };
 
-    useEffect(() => {
-        if (socket) {
-            socket.on("message", (newMessage: any) => {
-                const formattedMessage: Message = {
-                    id: newMessage.id,
-                    text: newMessage.content,
-                    type: newMessage.sender === profile?.id ? "sent" : "received",
-                    createdAt: newMessage.createdAt || Date.now(),
-                    read: newMessage.read || false,
-                };
 
-                setMessages((prevMessages) => [...prevMessages, formattedMessage]);
-
-                if (newMessage.sender === receiverId && !formattedMessage.read) {
-                    markAsRead(formattedMessage.id);
-                }
-            });
-
-            socket.on("messageRead", ({ messageId }: { messageId: string }) => {
-                setMessages((prevMessages) =>
-                    prevMessages.map((msg) =>
-                        msg.id === messageId ? { ...msg, read: true } : msg
-                    )
-                );
-            });
-
-            socket.on("typing", ({ senderId }: TypingEvent) => {
-                if (senderId === receiverId) {
-                    setIsOtherUserTyping(true);
-                    setTypingUser(senderId);
-                }
-            });
-
-            socket.on("stopTyping", ({ senderId }: TypingEvent) => {
-                if (senderId === receiverId) {
-                    setIsOtherUserTyping(false);
-                    setTypingUser(null);
-                }
-            });
-        }
-
-        return () => {
-            socket?.off("message");
-            socket?.off("messageRead");
-            socket?.off("typing");
-            socket?.off("stopTyping");
-        };
-    }, [socket, receiverId]);
-
-    useFocusEffect(
-        React.useCallback(() => {
-            const socketInstance = io("http://192.168.1.163:3000", {
-                transports: ["websocket"],
-                query: {
-                    token: SecureStore.getItemAsync("authToken"),
-                },
-            });
-
-            setSocket(socketInstance);
-            socketInstance.emit("joinRoom", profile?.id);
-
-            return () => {
-                socketInstance.disconnect();
-            };
-        }, [receiverId])
-    );
 
     const fetchMessages = async (page = 1) => {
         // setIsLoading(true);
@@ -338,7 +371,8 @@ export default function MessageScreen() {
         <View>
             <Text style={styles.dateHeader}>{item.label}</Text>
             {item.messages.map((msg: Message, index: number) => (
-                <MessageItem key={msg.id || index} message={msg} />
+                // <MessageItem key={msg.id || index} message={msg} />
+                <MessageItem key={`${msg.id}-${index}`} message={msg} />
             ))}
         </View>
     );
@@ -415,7 +449,7 @@ export default function MessageScreen() {
 
 
                 {isOtherUserTyping && (
-                    <Text style={styles.typingIndicator}>Typing...</Text>
+                    <Text style={[styles.typingIndicator, styles.typingText]}>Typing...</Text>
                 )}
 
                 {/* Scroll to Bottom Button */}
