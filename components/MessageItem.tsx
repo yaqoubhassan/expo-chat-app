@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     },
     messageRight: {
         backgroundColor: "#D9FDD3",
-        maxWidth: "80%",
+        maxWidth: "90%",
         minWidth: "20%",
         padding: 8,
         borderRadius: 6,
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     messageleft: {
         backgroundColor: "#f6f9f3",
         color: "#fff",
-        maxWidth: "80%",
+        maxWidth: "90%",
         minWidth: "20%",
         padding: 8,
         borderRadius: 6,
