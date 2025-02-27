@@ -4,12 +4,12 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   TextInput,
   Image,
   ActivityIndicator,
   SafeAreaView,
-  Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Colors } from '@/constants/Colors';
@@ -21,9 +21,82 @@ import { useFocusEffect } from "@react-navigation/native";
 import io from "socket.io-client";
 import { useProfile } from "@/context/ProfileContext";
 import { TypingContext } from '@/context/TypingContext';
+import styles from "@/styles/chatStyles";
+
+// Typing Indicator Component
+const TypingIndicator = () => {
+  const [dot1] = useState(new Animated.Value(0));
+  const [dot2] = useState(new Animated.Value(0));
+  const [dot3] = useState(new Animated.Value(0));
+
+  const animateDots = useCallback(() => {
+    // Reset values
+    dot1.setValue(0);
+    dot2.setValue(0);
+    dot3.setValue(0);
+
+    // Create animation sequence
+    Animated.stagger(200, [
+      Animated.timing(dot1, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dot2, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dot3, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Restart animation
+      animateDots();
+    });
+  }, [dot1, dot2, dot3]);
+
+  useEffect(() => {
+    animateDots();
+    return () => {
+      // Cleanup animation when component unmounts
+      dot1.stopAnimation();
+      dot2.stopAnimation();
+      dot3.stopAnimation();
+    };
+  }, [animateDots]);
+
+  const dotStyle = (animatedValue: Animated.Value) => ({
+    opacity: animatedValue.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0.3, 1, 0.3],
+    }),
+    transform: [
+      {
+        scale: animatedValue.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [1, 1.2, 1],
+        }),
+      },
+    ],
+  });
+
+  return (
+    <View style={styles.typingContainer}>
+      <Animated.View style={[styles.typingDot, dotStyle(dot1)]} />
+      <Animated.View style={[styles.typingDot, dotStyle(dot2)]} />
+      <Animated.View style={[styles.typingDot, dotStyle(dot3)]} />
+    </View>
+  );
+};
 
 interface TypingEvent {
-  senderId: string; // Adjust type based on your actual data
+  senderId: string;
 }
 
 type Participant = {
@@ -196,7 +269,6 @@ export default function ChatsScreen() {
         });
 
         socketInstance.on('typing', ({ senderId }: TypingEvent) => {
-
           // Update the typing context to show the typing indicator
           if (senderId !== profile.id) {
             // Only show typing indicator for other users, not the current user
@@ -205,7 +277,6 @@ export default function ChatsScreen() {
         });
 
         socketInstance.on('stopTyping', ({ senderId }: TypingEvent) => {
-
           // Clear the typing indicator when the user stops typing
           if (senderId !== profile.id) {
             setTypingUser(null);
@@ -214,7 +285,6 @@ export default function ChatsScreen() {
 
         // Handle new messages
         socketInstance.on('message', (updatedChat: any) => {
-
           const formattedChat: ChatItem = {
             id: updatedChat.conversationId,
             receiverId: updatedChat.sender === profile.id ? updatedChat.receiver : updatedChat.sender,
@@ -321,9 +391,7 @@ export default function ChatsScreen() {
         <View style={styles.chatDetails}>
           <Text style={styles.chatName}>{item.name || 'Unknown User'}</Text>
           {isTyping ? (
-            <Text style={[styles.chatMessage, styles.typingText]}>
-              Typing...
-            </Text>
+            <TypingIndicator />
           ) : (
             <Text style={styles.chatMessage} numberOfLines={1}>
               {item.lastMessage || 'No messages yet'}
@@ -418,133 +486,3 @@ export default function ChatsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  searchInput: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 8,
-    fontSize: 16,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  heading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: Colors.light.tint,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: '#32CD32',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  chatList: {
-    paddingVertical: 10,
-  },
-  chatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  avatarContainer: {
-    marginRight: 12,
-    position: 'relative',
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 10,
-  },
-  activeIndicator: {
-    width: 15,
-    height: 15,
-    backgroundColor: '#32CD32',
-    borderRadius: 10,
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  chatDetails: {
-    flex: 1,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-  },
-  chatMessage: {
-    fontSize: 14,
-    color: '#888888',
-  },
-  chatTimestamp: {
-    fontSize: 12,
-    color: Colors.light.subtext,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 120 : 40,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 50,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#888888',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#666",
-  },
-  typingText: {
-    fontStyle: 'italic',
-    color: '#32CD32', // Using the app's tint color
-  },
-});
