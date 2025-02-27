@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
     View,
     Text,
@@ -23,6 +23,7 @@ import MessageItem from "@/components/MessageItem";
 import styles from "@/styles/messageStyles";
 import { Message } from "@/types/Message";
 import { groupMessagesByDate } from "@/utils/groupeMessagesByDate";
+import { TypingContext } from '@/context/TypingContext';
 
 
 interface TypingEvent {
@@ -30,7 +31,8 @@ interface TypingEvent {
 }
 
 export default function MessageScreen() {
-    const [isTyping, setIsTyping] = useState(false);
+    const { isTyping, setIsTyping, typingUser, setTypingUser } = useContext(TypingContext);
+    const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
     const router = useRouter();
     const { profile } = useProfile();
     const { userId, name, avatar, receiverId, email } = useLocalSearchParams();
@@ -39,7 +41,6 @@ export default function MessageScreen() {
     const [inputHeight, setInputHeight] = useState(40);
     const [input, setInput] = useState("");
     const [socket, setSocket] = useState<any>(null);
-    const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
     const flatListRef = useRef<FlatList>(null); // Ref for FlatList
     const [showScrollToBottom, setShowScrollToBottom] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -87,6 +88,10 @@ export default function MessageScreen() {
                     messageId,
                     receiverId: profile?.id,
                 });
+
+                setMessages((prev) =>
+                    prev.map((m) => (m.id === messageId ? { ...m, read: true } : m))
+                );
             } else {
                 console.warn("Socket is not connected when trying to emit messageRead");
             }
@@ -120,13 +125,16 @@ export default function MessageScreen() {
 
     useEffect(() => {
         const setupSocket = async () => {
-            // const token = await SecureStore.getItemAsync("authToken");
             const newSocket = io("http://192.168.1.163:3000", {
                 transports: ["websocket"],
                 query: { userId: profile?.id }, // Replace dynamically
             });
             newSocket.on("userStatusChange", (onlineUserIds) => {
                 setOnlineUsers(onlineUserIds);
+                const isUserOnline = onlineUserIds.includes(receiverId);
+                if (isUserOnline) {
+                    setActiveStatus("Online");
+                }
             });
             setSocket(newSocket);
             return () => newSocket.disconnect();
@@ -137,21 +145,22 @@ export default function MessageScreen() {
     const formatLastSeen = (timestamp: string | number | Date): string => {
         const lastSeenDate = new Date(timestamp);
         const now = new Date();
-        const diffMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
+        const diffSeconds = Math.floor((now.getTime() - lastSeenDate.getTime()) / 1000);
 
-        if (diffMinutes < 1) return "Online";
-        if (diffMinutes < 60) return `Active ${diffMinutes}m ago`;
-        if (diffMinutes < 1440) return `Active ${Math.floor(diffMinutes / 60)}h ago`;
+        if (diffSeconds < 10) return "Online";
+        if (diffSeconds < 60) return `Active ${diffSeconds}s ago`;
+        if (diffSeconds < 3600) return `Active ${Math.floor(diffSeconds / 60)}m ago`;
+        if (diffSeconds < 86400) return `Active ${Math.floor(diffSeconds / 3600)}h ago`;
 
         return `Active ${lastSeenDate.toLocaleDateString()}`;
     };
-
 
     const handleTyping = (text: string) => {
         setInput(text);
 
         if (!isTyping) {
             setIsTyping(true);
+            setTypingUser(profile?.id);
             socket.emit("typing", { senderId: profile?.id, receiverId });
         }
 
@@ -159,6 +168,7 @@ export default function MessageScreen() {
 
         typingTimeout = setTimeout(() => {
             setIsTyping(false);
+            setTypingUser(null);
             socket.emit("stopTyping", { senderId: profile?.id, receiverId });
         }, 1000);
     };
@@ -175,6 +185,10 @@ export default function MessageScreen() {
                 };
 
                 setMessages((prevMessages) => [...prevMessages, formattedMessage]);
+
+                if (newMessage.sender === receiverId && !formattedMessage.read) {
+                    markAsRead(formattedMessage.id);
+                }
             });
 
             socket.on("messageRead", ({ messageId }: { messageId: string }) => {
@@ -186,11 +200,17 @@ export default function MessageScreen() {
             });
 
             socket.on("typing", ({ senderId }: TypingEvent) => {
-                if (senderId === receiverId) setIsOtherUserTyping(true);
+                if (senderId === receiverId) {
+                    setIsOtherUserTyping(true);
+                    setTypingUser(senderId);
+                }
             });
 
             socket.on("stopTyping", ({ senderId }: TypingEvent) => {
-                if (senderId === receiverId) setIsOtherUserTyping(false);
+                if (senderId === receiverId) {
+                    setIsOtherUserTyping(false);
+                    setTypingUser(null);
+                }
             });
         }
 
@@ -268,7 +288,6 @@ export default function MessageScreen() {
         } catch (error) {
             console.error("Error fetching messages:", error);
         } finally {
-            // setIsLoading(false);
             setLoadingMore(false);
 
         }
@@ -315,23 +334,23 @@ export default function MessageScreen() {
 
     const groupedMessages = groupMessagesByDate(messages);
 
-    // const renderGroup = ({ item }: { item: any }) => (
-    //     <View>
-    //         <Text style={styles.dateHeader}>{item.label}</Text>
-    //         {item.messages.map((msg: Message, index: number) => (
-    //             <MessageItem key={msg.id || index} message={msg} />
-    //         ))}
-    //     </View>
-    // );
-
-    const renderGroup = useCallback(({ item }: { item: any }) => (
+    const renderGroup = ({ item }: { item: any }) => (
         <View>
             <Text style={styles.dateHeader}>{item.label}</Text>
             {item.messages.map((msg: Message, index: number) => (
                 <MessageItem key={msg.id || index} message={msg} />
             ))}
         </View>
-    ), []);
+    );
+
+    // const renderGroup = useCallback(({ item }: { item: any }) => (
+    //     <View>
+    //         <Text style={styles.dateHeader}>{item.label}</Text>
+    //         {item.messages.map((msg: Message, index: number) => (
+    //             <MessageItem key={msg.id || index} message={msg} />
+    //         ))}
+    //     </View>
+    // ), []);
 
 
     if (isLoading) {
@@ -384,13 +403,13 @@ export default function MessageScreen() {
                                 });
                             }
                         }}
-                        initialNumToRender={5}
-                        windowSize={3}
-                        getItemLayout={(data, index) => ({
-                            length: 80, // Approximate row height
-                            offset: 80 * index,
-                            index,
-                        })}
+                    // initialNumToRender={5}
+                    // windowSize={3}
+                    // getItemLayout={(data, index) => ({
+                    //     length: 80, // Approximate row height
+                    //     offset: 80 * index,
+                    //     index,
+                    // })}
                     />
                 )}
 
