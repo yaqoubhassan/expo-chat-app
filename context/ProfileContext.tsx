@@ -3,11 +3,19 @@ import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@env";
 import { useRouter } from "expo-router";
 
+// Define proper types for your profile
+interface Profile {
+    id: string;
+    // Add other profile properties here
+    [key: string]: any;
+}
+
 interface ProfileContextData {
-    profile: Record<string, any> | null; // Replace `any` with your profile type
-    setProfile: (profile: Record<string, any> | null) => void;
-    fetchProfile: () => Promise<void>;
-    isLoading: boolean; // Added loading state
+    profile: Profile | null;
+    setProfile: (profile: Profile | null) => void;
+    fetchProfile: () => Promise<Profile | null>;
+    isLoading: boolean;
+    clearProfile: () => Promise<void>; // Added for logout functionality
 }
 
 const ProfileContext = createContext<ProfileContextData | null>(null);
@@ -21,11 +29,28 @@ export const useProfile = () => {
 };
 
 export const ProfileProvider = ({ children }: { children: React.ReactNode }) => {
-    const [profile, setProfile] = useState<Record<string, any> | null>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const router = useRouter();
 
-    const fetchProfile = async () => {
+    // Try to load cached profile on mount
+    useEffect(() => {
+        const loadCachedProfile = async () => {
+            try {
+                const cachedProfileJson = await SecureStore.getItemAsync("cachedProfile");
+                if (cachedProfileJson) {
+                    const cachedProfile = JSON.parse(cachedProfileJson);
+                    setProfile(cachedProfile);
+                }
+            } catch (error) {
+                console.error("Error loading cached profile:", error);
+            }
+        };
+
+        loadCachedProfile();
+    }, []);
+
+    const fetchProfile = async (): Promise<Profile | null> => {
         setIsLoading(true);
 
         try {
@@ -33,8 +58,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
             if (!token) {
                 console.error("No auth token found");
                 setProfile(null);
-                // Don't immediately redirect - let the component decide what to do
-                return;
+                return null;
             }
 
             const response = await fetch(`${BASE_URL}/users/profile`, {
@@ -52,7 +76,6 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
             try {
                 data = JSON.parse(responseText);
             } catch (parseError) {
-                // If it's not valid JSON, use the raw text
                 console.error("Failed to parse response as JSON", parseError);
 
                 if (!response.ok) {
@@ -71,7 +94,13 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
 
             // At this point we have a successful response
             if (data.status === "success" && data.data) {
-                setProfile(data.data); // Save profile data
+                const profileData = data.data;
+                setProfile(profileData); // Save profile data
+
+                // Cache the profile data
+                await SecureStore.setItemAsync("cachedProfile", JSON.stringify(profileData));
+
+                return profileData;
             } else {
                 throw new Error("Invalid response format");
             }
@@ -86,18 +115,34 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
                     error.message.includes("No auth token found"))) {
                 router.replace("/(auth)/login");
             }
+
+            return null;
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Fetch profile on component mount with proper dependency array
-    useEffect(() => {
-        fetchProfile();
-    }, [router]); // Add router to dependency array since it's used inside fetchProfile
+    // Function to clear profile (for logout)
+    const clearProfile = async () => {
+        setProfile(null);
+        try {
+            await SecureStore.deleteItemAsync("cachedProfile");
+            await SecureStore.deleteItemAsync("authToken");
+        } catch (error) {
+            console.error("Error clearing profile data:", error);
+        }
+    };
+
+    // Don't automatically fetch on mount - let components decide when to fetch
 
     return (
-        <ProfileContext.Provider value={{ profile, setProfile, fetchProfile, isLoading }}>
+        <ProfileContext.Provider value={{
+            profile,
+            setProfile,
+            fetchProfile,
+            isLoading,
+            clearProfile
+        }}>
             {children}
         </ProfileContext.Provider>
     );

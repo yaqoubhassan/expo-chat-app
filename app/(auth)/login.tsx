@@ -8,6 +8,7 @@ import CustomTextInput from "@/components/CustomTextInput";
 import CustomPasswordInput from "@/components/CustomPasswordInput";
 import { BASE_URL } from "@env";
 import * as SecureStore from "expo-secure-store";
+import { useProfile } from "@/context/ProfileContext";
 
 // Define a type for validation errors
 type ValidationErrors = {
@@ -17,6 +18,7 @@ type ValidationErrors = {
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { setProfile } = useProfile(); // Get setProfile from context
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -37,6 +39,41 @@ export default function LoginScreen() {
             console.log("Token saved successfully");
         } catch (error) {
             console.error("Failed to save token:", error);
+        }
+    };
+
+    const fetchProfileData = async (token: string) => {
+        try {
+            const profileResponse = await fetch(`${BASE_URL}/users/profile`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            const responseText = await profileResponse.text();
+            let profileData;
+
+            try {
+                profileData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error("Failed to parse profile response as JSON", parseError);
+                return null;
+            }
+
+            if (profileResponse.ok && profileData.status === "success" && profileData.data) {
+                // Set profile directly in the context
+                setProfile(profileData.data);
+                // Optional: Cache profile data
+                await SecureStore.setItemAsync("cachedProfile", JSON.stringify(profileData.data));
+                return profileData.data;
+            }
+
+            return null;
+        } catch (error) {
+            console.error("Error fetching profile data:", error);
+            return null;
         }
     };
 
@@ -63,14 +100,23 @@ export default function LoginScreen() {
 
             if (response.ok) {
                 if (data.data.token) {
-                    await saveToken(data.data.token);
+                    const token = data.data.token;
+
+                    // Save token first
+                    await saveToken(token);
+
+                    // Fetch profile data right after login
+                    await fetchProfileData(token);
                 }
+
                 Toast.show({
                     type: "success",
                     text1: "Success",
                     text2: "Login successful!",
                 });
-                router.push("/(chat)"); // Navigate to the home screen
+
+                // Navigate to chat screen after login and profile fetch
+                router.push("/(chat)");
             } else {
                 if (data.message.includes("Please verify your email")) {
                     // If the user is not verified, redirect to the email verification screen
@@ -144,7 +190,7 @@ export default function LoginScreen() {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
             <View style={styles.signUpContainer}>
-                <Text style={styles.signUpText}>Don’t have an account? </Text>
+                <Text style={styles.signUpText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
                     <Text style={styles.signUpLink}>Sign Up</Text>
                 </TouchableOpacity>
