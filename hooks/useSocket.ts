@@ -53,12 +53,10 @@ export const useSocket = (
         });
 
         socketInstance.on('typing', ({ senderId }: TypingEvent) => {
-          console.log(`Typing event received from ${senderId}`);
           // Update the typing context to show the typing indicator
           if (senderId !== profileId) {
             // Only show typing indicator for other users, not the current user
             setTypingUser(senderId);
-            console.log(`Set typing user to ${senderId}`);
           }
         });
 
