@@ -9,7 +9,7 @@ import { useLocalSearchParams } from "expo-router";
 
 export const useMessaging = (receiverId: string) => {
   const { profile } = useProfile();
-    const { userId } = useLocalSearchParams();
+  const { userId } = useLocalSearchParams();
   const { isTyping, setIsTyping, typingUser, setTypingUser } = useContext(TypingContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
