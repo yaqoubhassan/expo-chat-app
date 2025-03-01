@@ -45,7 +45,7 @@ export default function ChatsScreen() {
   } = useChats(profile, onlineUsers);
 
   // Initialize socket connection
-  useSocket(
+  const socket = useSocket(
     profile?.id,
     (onlineUserIds) => {
       setOnlineUsers(onlineUserIds);
@@ -53,6 +53,24 @@ export default function ChatsScreen() {
     },
     setTypingUser,
     updateChatsWithNewMessage
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Chats screen focused, re-initializing socket");
+
+      // Reconnect or reinitialize socket logic if needed
+      if (socket) {
+        socket.connect(); // Assuming your socket instance has a `connect` method
+      }
+
+      return () => {
+        // Cleanup socket connection when the screen loses focus
+        if (socket) {
+          socket.disconnect(); // Assuming your socket instance has a `disconnect` method
+        }
+      };
+    }, [socket]) // Re-run effect if the socket instance changes
   );
 
   // Handle search functionality
@@ -78,7 +96,7 @@ export default function ChatsScreen() {
       return () => {
         // Cleanup when screen loses focus
       };
-    }, []) // Empty dependency array to run only on focus changes
+    }, [profile, fetchConversations]) // Empty dependency array to run only on focus changes
   );
 
   if (profileLoading) {
