@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   FlatList,
@@ -6,16 +6,17 @@ import {
   ActivityIndicator,
   Alert,
   Text,
-  TouchableOpacity
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native";
 import { fetchUsers } from "@/services/fetchUsers"; // Adjust the path
 import UserItem from "@/components/UserItem";
+import { useFocusEffect } from "@react-navigation/native";
 import { User } from "@/types/User"; // Adjust the path
 import { Colors } from "@/constants/Colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useProfile } from "@/context/ProfileContext";
-import io, { Socket } from "socket.io-client";
+import { useSocket } from "@/hooks/useSocket"; // Import the useSocket hook
 
 export default function PeopleScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -25,26 +26,21 @@ export default function PeopleScreen() {
   const [hasMore, setHasMore] = useState(true);
   const { profile } = useProfile();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
 
-  useEffect(() => {
-    const setupSocket = async () => {
-      // const token = await SecureStore.getItemAsync("authToken");
-      const newSocket = io("http://192.168.1.163:3000", {
-        transports: ["websocket"],
-        query: { userId: profile?.id }, // Replace dynamically
-      });
-      newSocket.on("userStatusChange", (onlineUserIds) => {
-        setOnlineUsers(onlineUserIds);
-      });
-      setSocket(newSocket);
-      return () => newSocket.disconnect();
-    };
-    setupSocket();
-  }, []);
+  // Use the useSocket hook to manage socket connection
+  const socket = useSocket(
+    profile?.id,
+    (onlineUserIds) => {
+      setOnlineUsers(onlineUserIds); // Update online users list
+    },
+    () => { }, // No typing functionality needed here
+    () => { }  // No new message functionality needed here
+  );
 
+  // Check if a user is online
   const isUserOnline = (userId: string) => onlineUsers.includes(userId);
 
+  // Fetch users from the API
   const getUsers = async (pageNumber = 1, refreshing = false) => {
     if (!refreshing) setIsLoading(true);
 
@@ -62,21 +58,42 @@ export default function PeopleScreen() {
     }
   };
 
+  // Load more users when reaching the end of the list
   const loadMoreUsers = () => {
     if (isLoading || !hasMore) return;
     setPage((prev) => prev + 1);
   };
 
+  // Refresh the user list
   const refreshUsers = () => {
     setIsRefreshing(true);
     setPage(1);
     getUsers(1, true);
   };
 
+  // Fetch users when the page changes
   useEffect(() => {
     getUsers(page);
   }, [page]);
 
+  // Reconnect socket when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("People screen focused, re-initializing socket");
+
+      // Reconnect or reinitialize socket logic if needed
+      if (socket) {
+        socket.connect(); // Assuming your socket instance has a `connect` method
+      }
+
+      return () => {
+        // Cleanup socket connection when the screen loses focus
+        if (socket) {
+          socket.disconnect(); // Assuming your socket instance has a `disconnect` method
+        }
+      };
+    }, [socket]) // Re-run effect if the socket instance changes
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,7 +108,9 @@ export default function PeopleScreen() {
       <FlatList
         data={users}
         keyExtractor={(item, index) => item.id || `user-${index}`}
-        renderItem={({ item }) => <UserItem item={item} isOnline={isUserOnline(item._id)} />}
+        renderItem={({ item }) => (
+          <UserItem item={item} isOnline={isUserOnline(item._id)} />
+        )}
         onEndReached={loadMoreUsers}
         onEndReachedThreshold={0.5}
         refreshing={isRefreshing}
