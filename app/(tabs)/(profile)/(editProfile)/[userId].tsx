@@ -186,7 +186,7 @@ export default function EditProfileScreen() {
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color="#32CD32" />
-                    <Text style={styles.loadingText}>Logging in...</Text>
+                    <Text style={styles.loadingText}>Updating profile...</Text>
                 </View>
             )}
             {/* Header */}
