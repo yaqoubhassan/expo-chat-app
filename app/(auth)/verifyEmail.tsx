@@ -18,8 +18,10 @@ import Toast from "react-native-toast-message";
 import * as SecureStore from "expo-secure-store";
 import Logo from "@/components/Logo";
 import { BASE_URL } from "@env";
+import { useProfile } from "@/context/ProfileContext";
 
 export default function VerifyEmailScreen() {
+    const { setProfile } = useProfile();
     const router = useRouter();
     const { email } = useLocalSearchParams();
     const [otp, setCode] = useState(["", "", "", "", "", ""]);
@@ -36,6 +38,41 @@ export default function VerifyEmailScreen() {
             console.log("Token saved successfully");
         } catch (error) {
             console.error("Failed to save token:", error);
+        }
+    };
+
+    const fetchProfileData = async (token: string) => {
+        try {
+            const profileResponse = await fetch(`${BASE_URL}/users/profile`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            const responseText = await profileResponse.text();
+            let profileData;
+
+            try {
+                profileData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error("Failed to parse profile response as JSON", parseError);
+                return null;
+            }
+
+            if (profileResponse.ok && profileData.status === "success" && profileData.data) {
+                // Set profile directly in the context
+                setProfile(profileData.data);
+                // Optional: Cache profile data
+                await SecureStore.setItemAsync("cachedProfile", JSON.stringify(profileData.data));
+                return profileData.data;
+            }
+
+            return null;
+        } catch (error) {
+            console.error("Error fetching profile data2:", error);
+            return null;
         }
     };
 
@@ -92,7 +129,11 @@ export default function VerifyEmailScreen() {
 
             if (response.ok) {
                 if (data.data.token) {
-                    await saveToken(data.data.token);
+                    const token = data.data.token;
+
+                    await saveToken(token);
+
+                    await fetchProfileData(token);
                 }
                 Toast.show({
                     type: "success",
