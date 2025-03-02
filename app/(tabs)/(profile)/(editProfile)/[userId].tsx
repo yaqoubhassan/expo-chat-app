@@ -7,7 +7,6 @@ import {
     ScrollView,
     TouchableOpacity,
     Image,
-    Alert,
     ActivityIndicator
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -88,7 +87,8 @@ export default function EditProfileScreen() {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
-            quality: 1,
+            quality: 0.7,  // Reduce quality to 70%
+            base64: false,
         });
 
         if (!result.canceled && result.assets?.length > 0) {
