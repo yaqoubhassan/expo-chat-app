@@ -183,19 +183,34 @@ export default function MessageScreen() {
                 )}
 
                 {/* Input */}
+
                 <View style={styles.inputContainer}>
                     <TextInput
                         value={input}
                         onChangeText={onChangeText}
-                        style={[styles.input, { height: inputHeight }]}
+                        style={[
+                            styles.input,
+                            Platform.OS === 'ios' ? {
+                                height: 'auto',
+                                minHeight: 40,
+                                maxHeight: 100
+                            } : {
+                                height: Math.min(100, inputHeight) // Limit Android height too
+                            }
+                        ]}
                         placeholder="Type message"
                         placeholderTextColor="#888"
                         multiline={true}
+                        scrollEnabled={true} // Enable scrolling
                         keyboardType="default"
                         returnKeyType="default"
-                        onContentSizeChange={(event) =>
-                            setInputHeight(event.nativeEvent.contentSize.height)
-                        }
+                        blurOnSubmit={false}
+                        textAlignVertical="top"
+                        onContentSizeChange={(event) => {
+                            if (Platform.OS !== 'ios') {
+                                setInputHeight(event.nativeEvent.contentSize.height);
+                            }
+                        }}
                     />
                     <TouchableOpacity onPress={onSendPress} disabled={!input.trim()}>
                         <MaterialIcons
