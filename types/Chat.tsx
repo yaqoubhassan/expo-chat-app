@@ -16,6 +16,10 @@ export type ChatItemType = {
     avatar: string;
     isActive: boolean;
     unreadCount: number;
+    isLastMessageSent?: boolean;  // Add this property
+    isLastMessageRead?: boolean;
+    // lastMessageSent?: boolean; // Is the last message sent by the current user?
+    // lastMessageRead?: boolean;
 };
 
 export interface TypingEvent {

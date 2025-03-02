@@ -42,6 +42,13 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
           const otherParticipant = conversation.participants?.find(
             (participant: any) => participant.email !== profile?.email
           );
+
+          // Check if the last message was sent by the current user
+          // const lastMessageSent = conversation.lastMessageSenderId === profile?.id;
+
+            const isLastMessageSent = conversation.lastMessageSender === profile?.id;
+            const isLastMessageRead = conversation.lastMessageRead || false;
+
           return {
             id: conversation._id,
             receiverId: otherParticipant?._id,
@@ -52,7 +59,11 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
             lastMessageAt: conversation.lastMessageAt,
             isActive: onlineUsers.includes(otherParticipant?._id), // Use online status
             participants: conversation.participants || [],
-            unreadCount: conversation.unreadCount
+            unreadCount: conversation.unreadCount,
+            isLastMessageSent: isLastMessageSent,
+            isLastMessageRead: isLastMessageRead,
+            // lastMessageSent: lastMessageSent,
+            // lastMessageRead: lastMessageSent ? conversation.lastMessageRead : false
           };
         });
 
@@ -91,6 +102,11 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
   }, [fetchConversations]);
 
   const updateChatsWithNewMessage = useCallback((updatedChat: any) => {
+    // const isCurrentUserSender = updatedChat.sender === profile.id;
+
+    const isLastMessageSent = updatedChat.sender === profile?.id;
+    const isLastMessageRead = updatedChat.lastMessageRead || false;
+
     const formattedChat: ChatItemType = {
       id: updatedChat.conversationId,
       receiverId: updatedChat.sender === profile.id ? updatedChat.receiver : updatedChat.sender,
@@ -102,6 +118,10 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
       participants: [updatedChat.sender, updatedChat.receiver],
       avatar: updatedChat.senderAvatar,
       isActive: onlineUsers.includes(updatedChat.sender),
+      isLastMessageSent: isLastMessageSent,
+      isLastMessageRead: isLastMessageRead,
+    //    lastMessageSent: isCurrentUserSender,
+    // lastMessageRead: isCurrentUserSender ? updatedChat.read : false
     };
 
     setChats((prevChats) => {

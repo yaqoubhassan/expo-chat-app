@@ -166,4 +166,15 @@ export default StyleSheet.create({
         color: '#32CD32', // Green color for unread messages
         fontWeight: '600', // Optional: make it slightly bolder
     },
+
+    lastMessageContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    messageStatusIcon: {
+        marginRight: 4,
+    },
+    unreadMessage: {
+        fontWeight: 'bold',
+    },
 });
