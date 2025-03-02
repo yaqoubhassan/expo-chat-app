@@ -79,7 +79,6 @@ export default function PeopleScreen() {
   // Reconnect socket when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log("People screen focused, re-initializing socket");
 
       // Reconnect or reinitialize socket logic if needed
       if (socket) {
