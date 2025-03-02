@@ -122,6 +122,7 @@ export default StyleSheet.create({
         marginHorizontal: 10,
         minHeight: 40,
         textAlignVertical: "top",
+        fontSize: 16,
     },
     loadingContainer: {
         flex: 1,
