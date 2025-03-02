@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { parseISO, format, isToday, isYesterday, isThisWeek, differenceInDays } from 'date-fns';
 import { useRouter } from "expo-router";
 import { useProfile } from "@/context/ProfileContext";
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import TypingIndicator from './TypingIndicator';
 import styles from "@/styles/chatStyles";
 import { ChatItemType } from '@/types/Chat';
@@ -15,7 +16,6 @@ type ChatItemProps = {
 const ChatItem = ({ item, typingUser }: ChatItemProps) => {
     const router = useRouter();
     const { profile } = useProfile();
-
 
     // Format timestamp based on when the message was sent
     const formatMessageTime = (timestamp: string) => {
@@ -48,10 +48,6 @@ const ChatItem = ({ item, typingUser }: ChatItemProps) => {
         : 'N/A';
 
     // Find the other participant (the one who is not the current user)
-    // const otherParticipant = item.participants.find(
-    //     (participant: any) => participant._id !== profile?.id
-    // );
-
     let otherParticipantId = null;
     if (item.participants && Array.isArray(item.participants)) {
         const otherParticipant = item.participants.find(
@@ -66,10 +62,7 @@ const ChatItem = ({ item, typingUser }: ChatItemProps) => {
     }
 
     // Check if the other participant is typing
-    // const isTyping = typingUser === otherParticipant?._id;
     const isTyping = typingUser === otherParticipantId;
-
-    // console.log(`ChatItem for ${item.name}: isTyping=${isTyping}, typingUser=${typingUser}, otherParticipant=${otherParticipant?._id}, unreadCount=${item.unreadCount}`);
 
     return (
         <TouchableOpacity
@@ -97,19 +90,35 @@ const ChatItem = ({ item, typingUser }: ChatItemProps) => {
                 {isTyping ? (
                     <TypingIndicator />
                 ) : (
-                    <Text style={styles.chatMessage} numberOfLines={1}>
-                        {item.lastMessage || 'No messages yet'}
-                    </Text>
+                    <View style={styles.lastMessageContainer}>
+                        {item.isLastMessageSent && (
+                            <MaterialIcons
+                                name={item.isLastMessageRead ? "done-all" : "done"}
+                                size={16}
+                                color={item.isLastMessageRead ? "#32CD32" : "#6b6b6b"}
+                                style={styles.messageStatusIcon}
+                            />
+                        )}
+                        <Text
+                            style={[
+                                styles.chatMessage,
+                                item.unreadCount > 0 && !item.isLastMessageSent && styles.unreadMessage
+                            ]}
+                            numberOfLines={1}
+                        >
+                            {item.lastMessage || 'No messages yet'}
+                        </Text>
+                    </View>
                 )}
             </View>
             <View style={styles.chatMetadata}>
                 <Text style={[
                     styles.chatTimestamp,
-                    item.unreadCount > 0 && styles.unreadTimestamp
+                    item.unreadCount > 0 && !item.isLastMessageSent && styles.unreadTimestamp
                 ]}>
                     {formattedTime}
                 </Text>
-                {item.unreadCount > 0 && (
+                {item.unreadCount > 0 && !item.isLastMessageSent && (
                     <View style={styles.unreadBadge}>
                         <Text style={styles.unreadText}>
                             {item.unreadCount > 99 ? '99+' : item.unreadCount}
