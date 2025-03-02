@@ -43,11 +43,15 @@ export default function MessageScreen() {
         hasMore,
         isOtherUserTyping,
         activeStatus,
+        editingMessage,
         sendMessage,
         markAsRead,
         handleTyping,
         fetchMessages,
-        loadMoreMessages
+        loadMoreMessages,
+        startEditingMessage,
+        cancelEditingMessage,
+        updateMessage,
     } = useMessaging(safeReceiverId);
 
     // Group messages by date
@@ -82,9 +86,27 @@ export default function MessageScreen() {
     // Handle send button press
     const onSendPress = () => {
         if (!input.trim()) return;
-        sendMessage(input);
+
+        if (editingMessage) {
+            updateMessage(editingMessage.id, input);
+        } else {
+            sendMessage(input);
+        }
+
         setInput("");
     };
+
+    const handleCancelEditing = () => {
+        cancelEditingMessage(); // Call the hook's function
+        setInput(""); // Also clear input in the component
+    };
+
+    useEffect(() => {
+        if (editingMessage) {
+            setInput(editingMessage.text);
+
+        }
+    }, [editingMessage]);
 
     // Handle viewable items changed
     const handleViewableItemsChanged = ({ viewableItems }: any) => {
@@ -115,7 +137,7 @@ export default function MessageScreen() {
         <View>
             <Text style={styles.dateHeader}>{item.label}</Text>
             {item.messages.map((msg, index) => (
-                <MessageItem key={`${msg.id}-${index}`} message={msg} />
+                <MessageItem key={`${msg.id}-${index}`} message={msg} onEditPress={startEditingMessage} />
             ))}
         </View>
     );
@@ -150,7 +172,7 @@ export default function MessageScreen() {
                 ) : (
                     <FlatList
                         ListHeaderComponent={
-                            loadingMore ? (
+                            loadingMore && hasMore ? (
                                 <ActivityIndicator size="small" color={Colors.light.tint} />
                             ) : null
                         }
@@ -183,8 +205,17 @@ export default function MessageScreen() {
                 )}
 
                 {/* Input */}
+                {editingMessage && (
+                    <View style={styles.editingIndicator}>
+                        <Text style={styles.editingText}>Editing message</Text>
+                        <TouchableOpacity onPress={handleCancelEditing}>
+                            <MaterialIcons name="close" size={20} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.inputContainer}>
+
                     <TextInput
                         value={input}
                         onChangeText={onChangeText}
@@ -198,7 +229,7 @@ export default function MessageScreen() {
                                 height: Math.min(100, inputHeight) // Limit Android height too
                             }
                         ]}
-                        placeholder="Type message"
+                        placeholder={editingMessage ? "Edit message" : "Type message"}
                         placeholderTextColor="#888"
                         multiline={true}
                         scrollEnabled={true} // Enable scrolling
@@ -214,7 +245,7 @@ export default function MessageScreen() {
                     />
                     <TouchableOpacity onPress={onSendPress} disabled={!input.trim()}>
                         <MaterialIcons
-                            name="send"
+                            name={editingMessage ? "check" : "send"}
                             size={24}
                             color={!input.trim() ? "#888" : "#32CD32"}
                         />

@@ -1,7 +1,7 @@
 import io, { Socket } from "socket.io-client";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@env";
-import { Message, TypingEvent, MessageReadEvent } from "@/types/MessageTypes";
+import { Message, TypingEvent, MessageReadEvent, MessageUpdateEvent } from "@/types/MessageTypes";
 
 export interface SocketHandlers {
     onMessage: (message: any) => void;
@@ -9,6 +9,7 @@ export interface SocketHandlers {
     onTyping: (data: TypingEvent) => void;
     onStopTyping: (data: TypingEvent) => void;
     onUserStatusChange?: (onlineUserIds: string[]) => void;
+    onMessageUpdated?: (data: MessageUpdateEvent) => void;
 }
 
 class SocketService {
@@ -50,11 +51,31 @@ class SocketService {
                 this.socket.on("userStatusChange", handlers.onUserStatusChange);
             }
 
+            this.socket.on("messageUpdated", (data) => {
+                if (handlers.onMessageUpdated) {
+                    // Transform the data to match expected format if needed
+                    const updateEvent = {
+                        messageId: data.id || data.messageId,
+                        content: data.content,
+                        receiverId: data.receiverId
+                    };
+                    handlers.onMessageUpdated(updateEvent);
+                }
+            });
+
             return this.socket;
         } catch (error) {
             console.error("Socket initialization error:", error);
             return null;
         }
+    }
+
+    updateMessage(messageId: string, content: string, receiverId: string) {
+        if (!this.socket) {
+            console.warn("Socket not connected when trying to update message");
+            return;
+        }
+        this.socket.emit("messageUpdated", { messageId, content, receiverId });
     }
 
     sendMessage(receiverId: string, content: string) {
@@ -93,6 +114,7 @@ class SocketService {
             this.socket.off("typing");
             this.socket.off("stopTyping");
             this.socket.off("userStatusChange");
+            this.socket.off("messageUpdated");
             this.socket.disconnect();
             this.socket = null;
         }

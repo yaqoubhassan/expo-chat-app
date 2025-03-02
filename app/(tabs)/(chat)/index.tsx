@@ -57,7 +57,6 @@ export default function ChatsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("Chats screen focused, re-initializing socket");
 
       // Reconnect or reinitialize socket logic if needed
       if (socket) {
@@ -144,7 +143,7 @@ export default function ChatsScreen() {
         />
       )}
 
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.fab}
         onPress={() => {
           // Handle new chat creation
@@ -153,7 +152,7 @@ export default function ChatsScreen() {
         }}
       >
         <MaterialIcons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </SafeAreaView>
   );
 }

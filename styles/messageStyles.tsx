@@ -166,5 +166,21 @@ export default StyleSheet.create({
     typingIndicatorStyle: {
         marginLeft: 20,
         marginBottom: 10
-    }
+    },
+    editingIndicator: {
+        flexDirection: 'row',
+        // alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        backgroundColor: '#f0f0f0',
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        width: '100%',
+    },
+    editingText: {
+        fontSize: 12,
+        color: '#666',
+        fontStyle: 'italic',
+    },
 });

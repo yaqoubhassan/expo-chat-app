@@ -1,13 +1,14 @@
 import React, { memo } from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Message } from "@/types/MessageTypes";
 
 interface MessageItemProps {
     message: Message;
+    onEditPress: (message: Message) => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, onEditPress }) => {
     const isSent = message.type === "sent";
     const formattedTime = message.createdAt
         ? new Date(message.createdAt).toLocaleString("en-US", {
@@ -17,27 +18,51 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         })
         : "N/A";
 
+    const handleLongPress = () => {
+        // Only allow editing sent messages
+        if (isSent) {
+            Alert.alert(
+                "Message Options",
+                "What would you like to do?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Edit",
+                        onPress: () => onEditPress(message)
+                    },
+                    // You can add delete option here as well
+                ]
+            );
+        }
+    };
     return (
-        <View style={[styles.messageContainer, isSent && { justifyContent: "flex-end", }]}>
-            <View style={isSent ? styles.messageRight : styles.messageleft}>
-                <Text style={isSent ? { color: "#000" } : { color: "#000" }}>{message.text}</Text>
-                <View style={styles.sentTime}>
-                    <Text style={styles.timestamp}>{formattedTime}</Text>
+        <TouchableOpacity onLongPress={handleLongPress}
+            delayLongPress={500}
+            activeOpacity={0.9}>
+            <View style={[styles.messageContainer, isSent && { justifyContent: "flex-end", }]}>
+                <View style={isSent ? styles.messageRight : styles.messageleft}>
+                    <Text style={isSent ? { color: "#000" } : { color: "#000" }}>
+                        {message.text}
+                        {message.isEdited && <Text style={styles.editedText}> (edited)</Text>}
+                    </Text>
+                    <View style={styles.sentTime}>
+                        <Text style={styles.timestamp}>{formattedTime}</Text>
 
-                    {isSent && (
-                        <MaterialIcons
-                            name={message.read ? "done-all" : "done"}
-                            size={16}
-                            color={message.read ? "#32CD32" : "#6b6b6b"}
-                            style={styles.readIcon}
-                        />
-                    )}
+                        {isSent && (
+                            <MaterialIcons
+                                name={message.read ? "done-all" : "done"}
+                                size={16}
+                                color={message.read ? "#32CD32" : "#6b6b6b"}
+                                style={styles.readIcon}
+                            />
+                        )}
+                    </View>
+
+                    <View style={isSent ? styles.rightArrowBorder : styles.leftArrowBorder}></View>
+                    <View style={isSent ? styles.rightArrow : styles.leftArrow}></View>
                 </View>
-
-                <View style={isSent ? styles.rightArrowBorder : styles.leftArrowBorder}></View>
-                <View style={isSent ? styles.rightArrow : styles.leftArrow}></View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
@@ -143,13 +168,19 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "flex-end",
         marginTop: 5
-    }
-
+    },
+    editedText: {
+        fontSize: 11,
+        fontStyle: 'italic',
+        color: '#6b6b6b',
+    },
 });
 
 // export default memo(MessageItem);
 
 export default memo(MessageItem, (prevProps, nextProps) => {
     return prevProps.message.id === nextProps.message.id &&
-        prevProps.message.read === nextProps.message.read;
+        prevProps.message.read === nextProps.message.read &&
+        prevProps.message.text === nextProps.message.text &&
+        prevProps.message.isEdited === nextProps.message.isEdited;
 });

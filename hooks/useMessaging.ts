@@ -3,7 +3,7 @@ import { TypingContext } from '@/context/TypingContext';
 import { useProfile } from "@/context/ProfileContext";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@env";
-import { Message, MessageReadEvent, TypingEvent } from "@/types/MessageTypes";
+import { Message, MessageReadEvent, TypingEvent, MessageUpdateEvent } from "@/types/MessageTypes";
 import socketService from "@/services/socketService";
 import { useLocalSearchParams } from "expo-router";
 
@@ -20,6 +20,7 @@ export const useMessaging = (receiverId: string) => {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
   // Format last seen timestamp
   const formatLastSeen = (timestamp: string | number | Date): string => {
@@ -34,6 +35,17 @@ export const useMessaging = (receiverId: string) => {
 
     return `Active ${lastSeenDate.toLocaleDateString()}`;
   };
+
+  const handleMessageUpdated = useCallback((data: any) => {
+    const { messageId, content } = data;
+    console.log("Message updated event received:", messageId, content);
+
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.id === messageId ? { ...msg, text: content, isEdited: true } : msg
+      )
+    );
+  }, []);
 
   // Socket event handlers
   const handleNewMessage = useCallback((newMessage: any) => {
@@ -98,11 +110,14 @@ export const useMessaging = (receiverId: string) => {
         onMessageRead: handleMessageRead,
         onTyping: handleUserTyping,
         onStopTyping: handleUserStopTyping,
-        onUserStatusChange: handleUserStatusChange
+        onUserStatusChange: handleUserStatusChange,
+        onMessageUpdated: handleMessageUpdated
       });
     };
 
     setupSocket();
+
+    console.log("Socket setup complete, listening for message updates");
 
     return () => {
       socketService.disconnectSocket();
@@ -111,7 +126,58 @@ export const useMessaging = (receiverId: string) => {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [profile?.id, receiverId]);
+  }, [profile?.id, receiverId, handleMessageUpdated]);
+
+  const startEditingMessage = (message: Message) => {
+    setEditingMessage(message);
+  };
+
+  // Function to cancel editing
+  const cancelEditingMessage = () => {
+    setEditingMessage(null);
+  };
+
+  const updateMessage = async (messageId: string, content: string) => {
+    if (!content.trim()) return;
+
+    try {
+      const token = await SecureStore.getItemAsync("authToken");
+      const response = await fetch(`${BASE_URL}/messages/${messageId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: content,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.status === "success") {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === messageId ? { ...msg, text: content, isEdited: true } : msg
+          )
+        );
+
+        socketService.updateMessage(messageId, content, receiverId);
+      } else {
+        throw new Error("Failed to update message");
+      }
+    } catch (error) {
+      console.error("Error updating message:", error);
+
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === messageId ? { ...msg, isError: true } : msg
+        )
+      );
+    } finally {
+      // Reset editing state
+      setEditingMessage(null);
+    }
+  };
 
   // Fetch messages function
   const fetchMessages = async (page = 1) => {
@@ -144,7 +210,7 @@ export const useMessaging = (receiverId: string) => {
           media: msg.media || undefined,
           audioDuration: msg.audioDuration || undefined,
         }));
-        
+
         setMessages((prevMessages) => [...prevMessages, ...formattedMessages]);
         setHasMore(data.hasMore);
 
@@ -211,7 +277,7 @@ export const useMessaging = (receiverId: string) => {
       });
 
       socketService.emitMessageRead(messageId);
-      
+
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, read: true } : m))
       );
@@ -260,10 +326,14 @@ export const useMessaging = (receiverId: string) => {
     hasMore,
     isOtherUserTyping,
     activeStatus,
+    editingMessage,
     sendMessage,
     markAsRead,
     handleTyping,
     fetchMessages,
-    loadMoreMessages
+    loadMoreMessages,
+    startEditingMessage,
+    cancelEditingMessage,
+    updateMessage,
   };
 };

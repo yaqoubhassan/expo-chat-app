@@ -7,6 +7,7 @@ export interface Message {
     media?: string;
     audioDuration?: number;
     isError?: boolean;
+    isEdited?: boolean;
 }
 
 export interface MessageGroup {
@@ -20,4 +21,9 @@ export interface TypingEvent {
 
 export interface MessageReadEvent {
     messageId: string;
+}
+
+export interface MessageUpdateEvent {
+    messageId: string;
+    content: string;
 }
