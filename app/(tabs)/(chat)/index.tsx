@@ -12,6 +12,7 @@ import { Colors } from '@/constants/Colors';
 import { useFocusEffect } from "@react-navigation/native";
 import { useProfile } from "@/context/ProfileContext";
 import { TypingContext } from '@/context/TypingContext';
+
 import styles from "@/styles/chatStyles";
 
 // Components
@@ -29,7 +30,7 @@ export default function ChatsScreen() {
 
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  // const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
   // Initialize chat-related functionality
   const {
@@ -41,16 +42,11 @@ export default function ChatsScreen() {
     handleRefresh,
     fetchConversations,
     updateChatsWithNewMessage,
-    updateChatsWithOnlineStatus
-  } = useChats(profile, onlineUsers);
+  } = useChats(profile);
 
   // Initialize socket connection
   const socket = useSocket(
     profile?.id,
-    (onlineUserIds) => {
-      setOnlineUsers(onlineUserIds);
-      updateChatsWithOnlineStatus(onlineUserIds);
-    },
     setTypingUser,
     updateChatsWithNewMessage
   );
