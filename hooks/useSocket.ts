@@ -7,7 +7,6 @@ const SOCKET_URL = "http://192.168.1.163:3000";
 
 export const useSocket = (
   profileId: string | undefined,
-  setOnlineUsers: (users: string[]) => void,
   setTypingUser: (userId: string | null) => void,
   updateChats: (updatedChat: any) => void
 ) => {
@@ -47,11 +46,6 @@ export const useSocket = (
           console.error('Socket connection error:', error);
         });
 
-        // Handle online users updates
-        socketInstance.on('userStatusChange', (onlineUserIds: string[]) => {
-          setOnlineUsers(onlineUserIds);
-        });
-
         socketInstance.on('typing', ({ senderId }: TypingEvent) => {
           // Update the typing context to show the typing indicator
           if (senderId !== profileId) {
@@ -86,7 +80,6 @@ export const useSocket = (
     return () => {
       if (socketInstance) {
         socketInstance.off('message');
-        socketInstance.off('userStatusChange');
         socketInstance.off('typing');
         socketInstance.off('stopTyping');
         socketInstance.off('connect');
