@@ -2,13 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '@env';
 import { ChatItemType } from '@/types/Chat';
+import { useOnlineStatus } from '@/context/OnlineStatusContext';
 
-export const useChats = (profile: any, onlineUsers: string[]) => {
+export const useChats = (profile: any) => {
   const [chats, setChats] = useState<ChatItemType[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Use the online status context instead of passing onlineUsers as a prop
+  const { onlineUsers } = useOnlineStatus();
 
   const fetchConversations = useCallback(async (pageNumber = 1, reset = false) => {
     if (!profile) {
@@ -43,11 +47,8 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
             (participant: any) => participant.email !== profile?.email
           );
 
-          // Check if the last message was sent by the current user
-          // const lastMessageSent = conversation.lastMessageSenderId === profile?.id;
-
-            const isLastMessageSent = conversation.lastMessageSender === profile?.id;
-            const isLastMessageRead = conversation.lastMessageRead || false;
+          const isLastMessageSent = conversation.lastMessageSender === profile?.id;
+          const isLastMessageRead = conversation.lastMessageRead || false;
 
           return {
             id: conversation._id,
@@ -57,13 +58,12 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
             avatar: otherParticipant?.avatar || 'https://example.com/default-avatar.png',
             lastMessage: conversation.lastMessage,
             lastMessageAt: conversation.lastMessageAt,
-            isActive: onlineUsers.includes(otherParticipant?._id), // Use online status
+            // Use onlineUsers from the context to determine active status
+            isActive: onlineUsers.includes(otherParticipant?._id),
             participants: conversation.participants || [],
             unreadCount: conversation.unreadCount,
             isLastMessageSent: isLastMessageSent,
             isLastMessageRead: isLastMessageRead,
-            // lastMessageSent: lastMessageSent,
-            // lastMessageRead: lastMessageSent ? conversation.lastMessageRead : false
           };
         });
 
@@ -80,10 +80,11 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [profile, onlineUsers]);
+  }, [profile, onlineUsers]); // Add onlineUsers to dependency array
 
   // Handle pagination
   useEffect(() => {
+    console.log("Online users: ", onlineUsers)
     if (profile && page > 1) {
       fetchConversations(page, false);
     }
@@ -102,8 +103,6 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
   }, [fetchConversations]);
 
   const updateChatsWithNewMessage = useCallback((updatedChat: any) => {
-    // const isCurrentUserSender = updatedChat.sender === profile.id;
-
     const isLastMessageSent = updatedChat.sender === profile?.id;
     const isLastMessageRead = updatedChat.lastMessageRead || false;
 
@@ -117,11 +116,10 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
       unreadCount: updatedChat.unreadCount,
       participants: [updatedChat.sender, updatedChat.receiver],
       avatar: updatedChat.senderAvatar,
+      // Use onlineUsers from the context to determine active status
       isActive: onlineUsers.includes(updatedChat.sender),
       isLastMessageSent: isLastMessageSent,
       isLastMessageRead: isLastMessageRead,
-    //    lastMessageSent: isCurrentUserSender,
-    // lastMessageRead: isCurrentUserSender ? updatedChat.read : false
     };
 
     setChats((prevChats) => {
@@ -142,24 +140,17 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
     });
   }, [profile, onlineUsers]);
 
-  const updateChatsWithOnlineStatus = useCallback((onlineUserIds: string[]) => {
-    setChats(prevChats =>
-      prevChats.map(chat => ({
-        ...chat,
-        isActive: onlineUserIds.includes(chat.receiverId)
-      }))
-    );
-  }, []);
+  // Remove updateChatsWithOnlineStatus as it's now handled by the context
 
   const updateChatUnreadCount = useCallback((conversationId: string, newUnreadCount = 0) => {
-  setChats(prevChats => 
-    prevChats.map(chat => 
-      chat.id === conversationId 
-        ? { ...chat, unreadCount: newUnreadCount }
-        : chat
-    )
-  );
-}, []);
+    setChats(prevChats =>
+      prevChats.map(chat =>
+        chat.id === conversationId
+          ? { ...chat, unreadCount: newUnreadCount }
+          : chat
+      )
+    );
+  }, []);
 
   return {
     chats,
@@ -171,7 +162,6 @@ export const useChats = (profile: any, onlineUsers: string[]) => {
     handleLoadMore,
     handleRefresh,
     updateChatsWithNewMessage,
-    updateChatsWithOnlineStatus,
     updateChatUnreadCount
   };
 };
