@@ -13,6 +13,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 
 import { ProfileProvider } from "@/context/ProfileContext";
 import { TypingProvider } from "@/context/TypingContext";
+import { OnlineStatusProvider } from "@/context/OnlineStatusContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -86,15 +87,17 @@ export default function RootLayout() {
   return (
     <ProfileProvider>
       <TypingProvider>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <Toast config={toastConfig} />
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <OnlineStatusProvider>
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <Toast config={toastConfig} />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </OnlineStatusProvider>
       </TypingProvider>
     </ProfileProvider>
   );
