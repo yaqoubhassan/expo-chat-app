@@ -8,7 +8,6 @@ export interface SocketHandlers {
     onMessageRead: (data: MessageReadEvent) => void;
     onTyping: (data: TypingEvent) => void;
     onStopTyping: (data: TypingEvent) => void;
-    onUserStatusChange?: (onlineUserIds: string[]) => void;
     onMessageUpdated?: (data: MessageUpdateEvent) => void;
 }
 
@@ -46,10 +45,6 @@ class SocketService {
             this.socket.on("messageRead", handlers.onMessageRead);
             this.socket.on("typing", handlers.onTyping);
             this.socket.on("stopTyping", handlers.onStopTyping);
-
-            if (handlers.onUserStatusChange) {
-                this.socket.on("userStatusChange", handlers.onUserStatusChange);
-            }
 
             this.socket.on("messageUpdated", (data) => {
                 if (handlers.onMessageUpdated) {
@@ -113,7 +108,6 @@ class SocketService {
             this.socket.off("messageRead");
             this.socket.off("typing");
             this.socket.off("stopTyping");
-            this.socket.off("userStatusChange");
             this.socket.off("messageUpdated");
             this.socket.disconnect();
             this.socket = null;
