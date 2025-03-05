@@ -16,6 +16,7 @@ import { User } from "@/types/User"; // Adjust the path
 import { Colors } from "@/constants/Colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useProfile } from "@/context/ProfileContext";
+import { useOnlineStatus } from '@/context/OnlineStatusContext';
 import { useSocket } from "@/hooks/useSocket"; // Import the useSocket hook
 
 export default function PeopleScreen() {
@@ -25,20 +26,15 @@ export default function PeopleScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const { profile } = useProfile();
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  // const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const { isUserOnline } = useOnlineStatus();
 
   // Use the useSocket hook to manage socket connection
   const socket = useSocket(
     profile?.id,
-    (onlineUserIds) => {
-      setOnlineUsers(onlineUserIds); // Update online users list
-    },
     () => { }, // No typing functionality needed here
     () => { }  // No new message functionality needed here
   );
-
-  // Check if a user is online
-  const isUserOnline = (userId: string) => onlineUsers.includes(userId);
 
   // Fetch users from the API
   const getUsers = async (pageNumber = 1, refreshing = false) => {
