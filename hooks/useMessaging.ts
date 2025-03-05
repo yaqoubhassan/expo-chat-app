@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback, useContext } from "react";
+import { useState, useEffect, useRef, useCallback, useContext, useMemo } from "react";
 import { TypingContext } from '@/context/TypingContext';
 import { useProfile } from "@/context/ProfileContext";
+import { useOnlineStatus } from "@/context/OnlineStatusContext";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@env";
 import { Message, MessageReadEvent, TypingEvent, MessageUpdateEvent } from "@/types/MessageTypes";
@@ -11,19 +12,22 @@ export const useMessaging = (receiverId: string) => {
   const { profile } = useProfile();
   const { userId } = useLocalSearchParams();
   const { isTyping, setIsTyping, typingUser, setTypingUser } = useContext(TypingContext);
+  const { isUserOnline } = useOnlineStatus(); // Use the online status context
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeStatus, setActiveStatus] = useState<string>("");
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(null);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
+  // Get user's online status - will be reactive whenever the context updates
+  const isReceiverOnline = isUserOnline(receiverId);
+
   // Format last seen timestamp
-  const formatLastSeen = (timestamp: string | number | Date): string => {
+  const formatLastSeen = useCallback((timestamp: string | number | Date): string => {
     const lastSeenDate = new Date(timestamp);
     const now = new Date();
     const diffSeconds = Math.floor((now.getTime() - lastSeenDate.getTime()) / 1000);
@@ -34,7 +38,31 @@ export const useMessaging = (receiverId: string) => {
     if (diffSeconds < 86400) return `Active ${Math.floor(diffSeconds / 3600)}h ago`;
 
     return `Active ${lastSeenDate.toLocaleDateString()}`;
-  };
+  }, []);
+
+  // Use useMemo for activeStatus to recalculate when dependencies change
+  const activeStatus = useMemo(() => {
+    if (isReceiverOnline) {
+      return "Online";
+    } else if (lastSeenTimestamp) {
+      return formatLastSeen(lastSeenTimestamp);
+    }
+    return "";
+  }, [isReceiverOnline, lastSeenTimestamp, formatLastSeen]);
+
+  // Update last seen time periodically when user is offline
+  useEffect(() => {
+    if (isReceiverOnline || !lastSeenTimestamp) return;
+
+    // Update the formatted time every minute to show accurate "X minutes ago"
+    const intervalId = setInterval(() => {
+      // This will trigger a re-calculation of activeStatus via the useMemo
+      const forceUpdate = {};
+      setLastSeenTimestamp(prev => prev ? String(new Date(prev)) : prev);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(intervalId);
+  }, [isReceiverOnline, lastSeenTimestamp]);
 
   const handleMessageUpdated = useCallback((data: any) => {
     const { messageId, content } = data;
@@ -92,14 +120,6 @@ export const useMessaging = (receiverId: string) => {
     }
   }, [receiverId]);
 
-  const handleUserStatusChange = useCallback((onlineUserIds: string[]) => {
-    setOnlineUsers(onlineUserIds);
-    const isUserOnline = onlineUserIds.includes(receiverId);
-    if (isUserOnline) {
-      setActiveStatus("Online");
-    }
-  }, [receiverId]);
-
   // Initialize socket connection
   useEffect(() => {
     if (!profile?.id || !receiverId) return;
@@ -110,7 +130,6 @@ export const useMessaging = (receiverId: string) => {
         onMessageRead: handleMessageRead,
         onTyping: handleUserTyping,
         onStopTyping: handleUserStopTyping,
-        onUserStatusChange: handleUserStatusChange,
         onMessageUpdated: handleMessageUpdated
       });
     };
@@ -214,8 +233,9 @@ export const useMessaging = (receiverId: string) => {
         setMessages((prevMessages) => [...prevMessages, ...formattedMessages]);
         setHasMore(data.hasMore);
 
+        // If we have lastSeen data from the API, store it
         if (data.activeStatus) {
-          setActiveStatus(formatLastSeen(data.activeStatus));
+          setLastSeenTimestamp(data.activeStatus);
         }
       } else if (data.message === "No conversation found") {
         setMessages([]);
@@ -335,5 +355,6 @@ export const useMessaging = (receiverId: string) => {
     startEditingMessage,
     cancelEditingMessage,
     updateMessage,
+    isReceiverOnline
   };
 };
