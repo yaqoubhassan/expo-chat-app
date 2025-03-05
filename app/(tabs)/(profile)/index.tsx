@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback } from "react";
 import {
     View,
     Text,
@@ -13,18 +13,40 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
-import { useProfile } from "@/context/ProfileContext"; // Import the ProfileContext
+import { useProfile } from "@/context/ProfileContext";
 import * as SecureStore from "expo-secure-store";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSocket } from "@/hooks/useSocket";
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { profile, fetchProfile } = useProfile(); // Access profile and fetchProfile from context
+    const { profile, fetchProfile } = useProfile();
+
+    const socket = useSocket(
+        profile?.id,
+        () => { },
+        () => { }
+    );
 
     useFocusEffect(
         React.useCallback(() => {
             fetchProfile();
         }, [])
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+
+            if (socket) {
+                socket.connect();
+            }
+
+            return () => {
+                if (socket) {
+                    socket.disconnect();
+                }
+            };
+        }, [socket])
     );
 
     const handleLogout = async () => {

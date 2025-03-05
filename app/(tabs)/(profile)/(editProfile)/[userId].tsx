@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     View,
     Text,
@@ -17,6 +17,10 @@ import { BASE_URL } from "@env";
 import CustomTextInput from "@/components/CustomTextInput";
 import CustomPasswordInput from "@/components/CustomPasswordInput";
 import Toast from "react-native-toast-message";
+import { useSocket } from "@/hooks/useSocket";
+import { useProfile } from "@/context/ProfileContext";
+import { useFocusEffect } from "@react-navigation/native";
+
 
 export default function EditProfileScreen() {
     const [name, setName] = useState("");
@@ -26,8 +30,30 @@ export default function EditProfileScreen() {
     const [oldPassword, setOldPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const { profile } = useProfile();
 
     const router = useRouter();
+
+    const socket = useSocket(
+        profile?.id,
+        () => { },
+        () => { }
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+
+            if (socket) {
+                socket.connect();
+            }
+
+            return () => {
+                if (socket) {
+                    socket.disconnect();
+                }
+            };
+        }, [socket])
+    );
 
     // Fetch user profile and populate fields
     useEffect(() => {
