@@ -84,7 +84,6 @@ export const useChats = (profile: any) => {
 
   // Handle pagination
   useEffect(() => {
-    console.log("Online users: ", onlineUsers)
     if (profile && page > 1) {
       fetchConversations(page, false);
     }
