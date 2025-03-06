@@ -61,7 +61,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
                 return null;
             }
 
-            const response = await fetch(`${BASE_URL}/users/profile`, {
+            const response = await fetch(`${BASE_URL}/api/users/profile`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,

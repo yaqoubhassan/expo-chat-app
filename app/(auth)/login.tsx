@@ -44,7 +44,7 @@ export default function LoginScreen() {
 
     const fetchProfileData = async (token: string) => {
         try {
-            const profileResponse = await fetch(`${BASE_URL}/users/profile`, {
+            const profileResponse = await fetch(`${BASE_URL}/api/users/profile`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -88,7 +88,7 @@ export default function LoginScreen() {
         setLoading(true);
 
         try {
-            const response = await fetch(`${BASE_URL}/auth/login`, {
+            const response = await fetch(`${BASE_URL}/api/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

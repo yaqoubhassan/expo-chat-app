@@ -9,7 +9,7 @@ export const fetchUsers = async (pageNumber = 1, limit = 10) => {
             throw new Error("Authentication token is missing. Please log in again.");
         }
 
-        const response = await fetch(`${BASE_URL}/users?page=${pageNumber}&limit=${limit}`, {
+        const response = await fetch(`${BASE_URL}/api/users?page=${pageNumber}&limit=${limit}`, {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${token}`,

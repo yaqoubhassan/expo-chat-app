@@ -69,7 +69,7 @@ export default function EditProfileScreen() {
                     return;
                 }
 
-                const response = await fetch(`${BASE_URL}/users/profile`, {
+                const response = await fetch(`${BASE_URL}/api/users/profile`, {
                     method: "GET",
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -166,7 +166,7 @@ export default function EditProfileScreen() {
                 formData.append("newPassword", newPassword);
             }
 
-            const response = await fetch(`${BASE_URL}/users/update`, {
+            const response = await fetch(`${BASE_URL}/api/users/update`, {
                 method: "PUT",
                 headers: {
                     Authorization: `Bearer ${token}`,

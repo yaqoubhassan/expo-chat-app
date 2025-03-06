@@ -161,7 +161,7 @@ export const useMessaging = (receiverId: string) => {
 
     try {
       const token = await SecureStore.getItemAsync("authToken");
-      const response = await fetch(`${BASE_URL}/messages/${messageId}`, {
+      const response = await fetch(`${BASE_URL}/api/messages/${messageId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -210,7 +210,7 @@ export const useMessaging = (receiverId: string) => {
       }
 
       const response = await fetch(
-        `${BASE_URL}/conversations/${userId}/messages?page=${page}&limit=20`,
+        `${BASE_URL}/api/conversations/${userId}/messages?page=${page}&limit=20`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -255,7 +255,7 @@ export const useMessaging = (receiverId: string) => {
 
     try {
       const token = await SecureStore.getItemAsync("authToken");
-      const response = await fetch(`${BASE_URL}/messages`, {
+      const response = await fetch(`${BASE_URL}/api/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -291,7 +291,7 @@ export const useMessaging = (receiverId: string) => {
   const markAsRead = async (messageId: string) => {
     try {
       const token = await SecureStore.getItemAsync("authToken");
-      await fetch(`${BASE_URL}/messages/${messageId}/read`, {
+      await fetch(`${BASE_URL}/api/messages/${messageId}/read`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -43,7 +43,7 @@ export default function VerifyEmailScreen() {
 
     const fetchProfileData = async (token: string) => {
         try {
-            const profileResponse = await fetch(`${BASE_URL}/users/profile`, {
+            const profileResponse = await fetch(`${BASE_URL}/api/users/profile`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -117,7 +117,7 @@ export default function VerifyEmailScreen() {
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${BASE_URL}/auth/verify-email`, {
+            const response = await fetch(`${BASE_URL}/api/auth/verify-email`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -162,7 +162,7 @@ export default function VerifyEmailScreen() {
     const resendCode = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${BASE_URL}/auth/resend-otp`, {
+            const response = await fetch(`${BASE_URL}/api/auth/resend-otp`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

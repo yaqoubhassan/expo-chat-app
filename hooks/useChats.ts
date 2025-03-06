@@ -28,7 +28,7 @@ export const useChats = (profile: any) => {
         throw new Error('Authentication token is missing. Please log in again.');
       }
 
-      const response = await fetch(`${BASE_URL}/conversations?page=${pageNumber}&limit=10`, {
+      const response = await fetch(`${BASE_URL}/api/conversations?page=${pageNumber}&limit=10`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

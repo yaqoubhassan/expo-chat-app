@@ -26,7 +26,7 @@ class SocketService {
 
         try {
             const token = await SecureStore.getItemAsync("authToken");
-            this.socket = io("http://192.168.1.163:3000", {
+            this.socket = io(`${BASE_URL}`, {
                 transports: ["websocket"],
                 query: {
                     userId,
