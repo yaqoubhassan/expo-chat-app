@@ -12,8 +12,8 @@ import { useProfile } from './ProfileContext';
 import io, { Socket } from "socket.io-client";
 import * as SecureStore from "expo-secure-store";
 import { AppState } from "react-native";
+import { BASE_URL } from "@env";
 
-const SOCKET_URL = "http://192.168.1.163:3000";
 
 // Define the shape of the context
 interface OnlineStatusContextType {
@@ -81,7 +81,7 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
                         socket.disconnect();
                     }
 
-                    socketInstance = io(SOCKET_URL, {
+                    socketInstance = io(`${BASE_URL}`, {
                         transports: ["websocket"],
                         query: { token, userId: profile?.id },
                     });

@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import io from "socket.io-client";
 import { ChatItemType, TypingEvent } from '@/types/Chat';
+import { BASE_URL } from "@env";
 
-const SOCKET_URL = "http://192.168.1.163:3000";
 
 export const useSocket = (
   profileId: string | undefined,
@@ -33,7 +33,7 @@ export const useSocket = (
           socket.disconnect();
         }
 
-        socketInstance = io(SOCKET_URL, {
+        socketInstance = io(`${BASE_URL}`, {
           transports: ['websocket'],
           query: { token, userId: profileId },
         });
